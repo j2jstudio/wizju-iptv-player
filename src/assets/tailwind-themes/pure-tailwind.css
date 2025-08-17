@@ -1,0 +1,9 @@
+/*
+ * Pure Tailwind - Pure Tailwind CSS package
+ * Usage: @import './path/to/pure-tailwind.css';
+ */
+
+/* Includes only the original features of Tailwind, without any theme customization */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

@@ -1,0 +1,314 @@
+/*
+ * Wizju IPTV Theme - Complete Theme Package
+ * Usage: @import './path/to/stream-complete.css';
+ */
+
+/* Tailwind Base Layer */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme Variable Definitions */
+@layer base {
+  :root {
+    /* Light theme colors */
+    --background: 0 0% 100%;
+    --foreground: 222 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 84% 4.9%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222 47% 11%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 217 91% 60%;
+    --radius: 0.75rem;
+
+    /* Streaming specific colors - Light */
+    --stream-bg: 0 0% 100%;
+    --stream-surface: 0 0% 98%;
+    --stream-surface-hover: 210 40% 96%;
+    --stream-accent: 217 91% 60%;
+    --stream-accent-hover: 217 91% 55%;
+    --stream-text: 222 84% 4.9%;
+    --stream-text-muted: 215 16% 47%;
+    --stream-border: 214 32% 91%;
+
+    /* Sidebar colors - Light */
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 222 84% 4.9%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 40% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 217 91% 60%;
+
+    /* Gradients - Light */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(217 91% 50%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(0 0% 98%));
+    --gradient-hero: linear-gradient(135deg, hsl(0 0% 100%), hsl(210 40% 96%));
+
+    /* Shadows - Light */
+    --shadow-card: 0 4px 20px hsl(0 0% 0% / 0.1);
+    --shadow-accent: 0 0 20px hsl(217 91% 60% / 0.2);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    /* Dark streaming theme colors */
+    --background: 220 23% 7%;
+    --foreground: 0 0% 95%;
+    --card: 220 20% 10%;
+    --card-foreground: 0 0% 95%;
+    --popover: 220 20% 10%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 15%;
+    --secondary-foreground: 0 0% 85%;
+    --muted: 220 15% 12%;
+    --muted-foreground: 0 0% 60%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 20%;
+    --input: 220 15% 15%;
+    --ring: 217 91% 60%;
+
+    /* Streaming specific colors - Dark */
+    --stream-bg: 220 23% 7%;
+    --stream-surface: 220 20% 10%;
+    --stream-surface-hover: 220 20% 13%;
+    --stream-accent: 217 91% 60%;
+    --stream-accent-hover: 217 91% 55%;
+    --stream-text: 0 0% 95%;
+    --stream-text-muted: 0 0% 60%;
+    --stream-border: 220 15% 20%;
+
+    /* Sidebar colors - Dark */
+    --sidebar-background: 220 25% 8%;
+    --sidebar-foreground: 0 0% 90%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 20% 12%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 220 15% 18%;
+    --sidebar-ring: 217 91% 60%;
+
+    /* Gradients - Dark */
+    --gradient-primary: linear-gradient(135deg, hsl(217 91% 60%), hsl(217 91% 50%));
+    --gradient-card: linear-gradient(180deg, hsl(220 20% 10%), hsl(220 20% 8%));
+    --gradient-hero: linear-gradient(135deg, hsl(220 23% 7%), hsl(220 20% 10%));
+
+    /* Shadows - Dark */
+    --shadow-card: 0 4px 20px hsl(220 23% 7% / 0.3);
+    --shadow-accent: 0 0 20px hsl(217 91% 60% / 0.2);
+  }
+}
+
+/* Custom Utility Classes */
+@layer utilities {
+  /* Color Utility Classes */
+  .bg-background {
+    background-color: hsl(var(--background));
+  }
+  .text-foreground {
+    color: hsl(var(--foreground));
+  }
+  .bg-card {
+    background-color: hsl(var(--card));
+  }
+  .text-card-foreground {
+    color: hsl(var(--card-foreground));
+  }
+  .bg-primary {
+    background-color: hsl(var(--primary));
+  }
+  .text-primary-foreground {
+    color: hsl(var(--primary-foreground));
+  }
+  .bg-secondary {
+    background-color: hsl(var(--secondary));
+  }
+  .text-secondary-foreground {
+    color: hsl(var(--secondary-foreground));
+  }
+  .bg-muted {
+    background-color: hsl(var(--muted));
+  }
+  .text-muted-foreground {
+    color: hsl(var(--muted-foreground));
+  }
+  .bg-accent {
+    background-color: hsl(var(--accent));
+  }
+  .text-accent-foreground {
+    color: hsl(var(--accent-foreground));
+  }
+  .bg-destructive {
+    background-color: hsl(var(--destructive));
+  }
+  .text-destructive-foreground {
+    color: hsl(var(--destructive-foreground));
+  }
+  .border-border {
+    border-color: hsl(var(--border));
+  }
+  .bg-input {
+    background-color: hsl(var(--input));
+  }
+  .ring-ring {
+    --tw-ring-color: hsl(var(--ring));
+  }
+
+  /* Streaming Specific Utility Classes */
+  .bg-stream-bg {
+    background-color: hsl(var(--stream-bg));
+  }
+  .bg-stream-surface {
+    background-color: hsl(var(--stream-surface));
+  }
+  .hover\:bg-stream-surface-hover:hover {
+    background-color: hsl(var(--stream-surface-hover));
+  }
+  .bg-stream-accent {
+    background-color: hsl(var(--stream-accent));
+  }
+  .hover\:bg-stream-accent-hover:hover {
+    background-color: hsl(var(--stream-accent-hover));
+  }
+  .text-stream-text {
+    color: hsl(var(--stream-text));
+  }
+  .text-stream-text-muted {
+    color: hsl(var(--stream-text-muted));
+  }
+  .border-stream-border {
+    border-color: hsl(var(--stream-border));
+  }
+
+  /* Sidebar Utility Classes */
+  .bg-sidebar {
+    background-color: hsl(var(--sidebar-background));
+  }
+  .text-sidebar-foreground {
+    color: hsl(var(--sidebar-foreground));
+  }
+  .bg-sidebar-primary {
+    background-color: hsl(var(--sidebar-primary));
+  }
+  .text-sidebar-primary-foreground {
+    color: hsl(var(--sidebar-primary-foreground));
+  }
+  .bg-sidebar-accent {
+    background-color: hsl(var(--sidebar-accent));
+  }
+  .text-sidebar-accent-foreground {
+    color: hsl(var(--sidebar-accent-foreground));
+  }
+  .border-sidebar-border {
+    border-color: hsl(var(--sidebar-border));
+  }
+
+  /* Gradient Utility Classes */
+  .bg-gradient-primary {
+    background-image: var(--gradient-primary);
+  }
+  .bg-gradient-card {
+    background-image: var(--gradient-card);
+  }
+  .bg-gradient-hero {
+    background-image: var(--gradient-hero);
+  }
+
+  /* Shadow Utility Classes */
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-accent {
+    box-shadow: var(--shadow-accent);
+  }
+
+  /* Border Radius Utility Classes */
+  .rounded-lg {
+    border-radius: var(--radius);
+  }
+  .rounded-md {
+    border-radius: calc(var(--radius) - 2px);
+  }
+  .rounded-sm {
+    border-radius: calc(var(--radius) - 4px);
+  }
+
+  /* Animation Utility Classes */
+  .transition-smooth {
+    transition: var(--transition-smooth);
+  }
+}
+
+/* Base Style Reset */
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings:
+      'rlig' 1,
+      'calt' 1;
+  }
+}
+
+/* Component Styles */
+@layer components {
+  .gradient-text {
+    background-image: var(--gradient-hero);
+    background-clip: text;
+    color: transparent;
+  }
+
+  .card {
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-card);
+  }
+
+  .btn {
+    border-radius: calc(var(--radius) - 2px);
+    transition: var(--transition-smooth);
+  }
+
+  .btn-primary {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .btn-primary:hover {
+    background-color: hsl(var(--primary) / 0.9);
+  }
+
+  .btn-secondary {
+    background-color: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+  }
+
+  .btn-secondary:hover {
+    background-color: hsl(var(--secondary) / 0.8);
+  }
+}
