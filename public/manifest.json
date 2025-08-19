@@ -8,12 +8,14 @@
     "activeTab"
   ],
   "action": {
-    "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/app.png",
       "48": "icons/app.png",
       "128": "icons/app.png"
     }
+  },
+  "background": {
+    "service_worker": "assets/background.js"
   },
   "options_page": "options.html",
   "icons": {

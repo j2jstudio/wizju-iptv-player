@@ -19,8 +19,9 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        popup: resolve(__dirname, 'popup.html'),
+        index: resolve(__dirname, 'index.html'),
         options: resolve(__dirname, 'options.html'),
+        background: resolve(__dirname, 'src/background.ts'),
       },
       output: {
         // Configure output file names to be static for the extension

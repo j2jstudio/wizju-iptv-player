@@ -134,7 +134,7 @@
       v-if="showAddSourceModal"
       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
     >
-      <div class="relative max-w-4xl w-full max-h-[90vh] overflow-auto">
+      <div class="relative max-w-4xl w-full max-h-[80vh] overflow-auto">
         <div class="absolute top-4 right-4 z-10">
           <Button
             variant="ghost"
