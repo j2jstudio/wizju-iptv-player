@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Wizju IPTV Player",
+  "version": "1.0.0",
+  "description": "A modern IPTV player built with Vue.js.",
+  "permissions": [
+    "storage",
+    "activeTab"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/app.png",
+      "48": "icons/app.png",
+      "128": "icons/app.png"
+    }
+  },
+  "options_page": "options.html",
+  "icons": {
+    "16": "icons/app.png",
+    "48": "icons/app.png",
+    "128": "icons/app.png"
+  }
+}

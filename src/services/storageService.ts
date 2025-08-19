@@ -1,3 +1,4 @@
+/// <reference types="chrome" />
 import type { StreamSource, CreateStreamSource, MediaItem } from '@/types/stream'
 
 export interface StorageItem {
@@ -25,15 +26,12 @@ class StorageService<T extends StorageItem, C extends CreateStorageItem> {
   }
 
   /**
-   * Load items from localStorage
+   * Load items from chrome.storage.local
    */
-  loadItems(): T[] {
+  async loadItems(): Promise<T[]> {
     try {
-      const storedItems = localStorage.getItem(this.storageKey)
-      if (storedItems) {
-        return JSON.parse(storedItems) as T[]
-      }
-      return []
+      const result = await chrome.storage.local.get(this.storageKey)
+      return (result[this.storageKey] || []) as T[]
     } catch (error) {
       console.error(`Failed to load items from ${this.storageKey}:`, error)
       return []
@@ -41,11 +39,11 @@ class StorageService<T extends StorageItem, C extends CreateStorageItem> {
   }
 
   /**
-   * Save items to localStorage
+   * Save items to chrome.storage.local
    */
-  saveItems(items: T[]): void {
+  async saveItems(items: T[]): Promise<void> {
     try {
-      localStorage.setItem(this.storageKey, JSON.stringify(items))
+      await chrome.storage.local.set({ [this.storageKey]: items })
     } catch (error) {
       console.error(`Failed to save items to ${this.storageKey}:`, error)
       throw error
@@ -55,7 +53,7 @@ class StorageService<T extends StorageItem, C extends CreateStorageItem> {
   /**
    * Add a new item
    */
-  addItem(items: T[], itemData: C): T[] {
+  async addItem(items: T[], itemData: C): Promise<T[]> {
     const newItem = {
       ...itemData,
       id: crypto.randomUUID(),
@@ -63,25 +61,25 @@ class StorageService<T extends StorageItem, C extends CreateStorageItem> {
     } as unknown as T
 
     const updatedItems = [...items, newItem]
-    this.saveItems(updatedItems)
+    await this.saveItems(updatedItems)
     return updatedItems
   }
 
   /**
    * Remove an item by id
    */
-  removeItem(items: T[], id: string): T[] {
+  async removeItem(items: T[], id: string): Promise<T[]> {
     const updatedItems = items.filter((item) => item.id !== id)
-    this.saveItems(updatedItems)
+    await this.saveItems(updatedItems)
     return updatedItems
   }
 
   /**
    * Update an item by id
    */
-  updateItem(items: T[], id: string, updates: Partial<T>): T[] {
+  async updateItem(items: T[], id: string, updates: Partial<T>): Promise<T[]> {
     const updatedItems = items.map((item) => (item.id === id ? { ...item, ...updates } : item))
-    this.saveItems(updatedItems)
+    await this.saveItems(updatedItems)
     return updatedItems
   }
 
@@ -95,9 +93,10 @@ class StorageService<T extends StorageItem, C extends CreateStorageItem> {
   /**
    * Check storage usage in bytes
    */
-  getStorageUsage(): number {
+  async getStorageUsage(): Promise<number> {
     try {
-      const data = localStorage.getItem(this.storageKey) || ''
+      const items = await this.loadItems()
+      const data = JSON.stringify(items)
       return new Blob([data]).size
     } catch {
       return 0
@@ -107,7 +106,11 @@ class StorageService<T extends StorageItem, C extends CreateStorageItem> {
   /**
    * Check if adding new data would exceed storage limit
    */
-  checkStorageLimit(items: T[], newItemData: C, limitBytes: number = 5 * 1024 * 1024): boolean {
+  async checkStorageLimit(
+    items: T[],
+    newItemData: C,
+    limitBytes: number = 5 * 1024 * 1024,
+  ): Promise<boolean> {
     const testItem = {
       ...newItemData,
       id: 'test-id',
@@ -123,9 +126,9 @@ class StorageService<T extends StorageItem, C extends CreateStorageItem> {
   /**
    * Clear all items
    */
-  clearAll(): void {
+  async clearAll(): Promise<void> {
     try {
-      localStorage.removeItem(this.storageKey)
+      await chrome.storage.local.remove(this.storageKey)
     } catch {
       console.error(`Failed to clear ${this.storageKey}`)
     }
@@ -157,7 +160,7 @@ class MediaItemsStorageService {
   /**
    * Load all MediaItems for a specific source
    */
-  loadItemsBySource(sourceId: string): StorableMediaItem[] {
+  async loadItemsBySource(sourceId: string): Promise<StorableMediaItem[]> {
     const storage = this.getStorageService(sourceId)
     return storage.loadItems()
   }
@@ -165,15 +168,13 @@ class MediaItemsStorageService {
   /**
    * Load MediaItems for all sources
    */
-  loadAllItems(): StorableMediaItem[] {
+  async loadAllItems(): Promise<StorableMediaItem[]> {
     const allItems: StorableMediaItem[] = []
+    const allStorage = await chrome.storage.local.get(null)
 
-    // Iterate through localStorage to find all keys related to media items
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key && key.startsWith('Wizju_media_items_')) {
-        const sourceId = key.replace('Wizju_media_items_', '')
-        const items = this.loadItemsBySource(sourceId)
+    for (const key in allStorage) {
+      if (key.startsWith('Wizju_media_items_')) {
+        const items = allStorage[key] as StorableMediaItem[]
         allItems.push(...items)
       }
     }
@@ -184,11 +185,11 @@ class MediaItemsStorageService {
   /**
    * Add a MediaItem to a specific source
    */
-  addItem(
+  async addItem(
     sourceId: string,
     items: StorableMediaItem[],
     itemData: Omit<StorableMediaItem, 'id' | 'dateAdded'>,
-  ): StorableMediaItem[] {
+  ): Promise<StorableMediaItem[]> {
     const storage = this.getStorageService(sourceId)
     return storage.addItem(items, itemData)
   }
@@ -196,7 +197,11 @@ class MediaItemsStorageService {
   /**
    * Remove a MediaItem from a specific source
    */
-  removeItem(sourceId: string, items: StorableMediaItem[], itemId: string): StorableMediaItem[] {
+  async removeItem(
+    sourceId: string,
+    items: StorableMediaItem[],
+    itemId: string,
+  ): Promise<StorableMediaItem[]> {
     const storage = this.getStorageService(sourceId)
     return storage.removeItem(items, itemId)
   }
@@ -204,12 +209,12 @@ class MediaItemsStorageService {
   /**
    * Update a MediaItem for a specific source
    */
-  updateItem(
+  async updateItem(
     sourceId: string,
     items: StorableMediaItem[],
     itemId: string,
     updates: Partial<StorableMediaItem>,
-  ): StorableMediaItem[] {
+  ): Promise<StorableMediaItem[]> {
     const storage = this.getStorageService(sourceId)
     return storage.updateItem(items, itemId, updates)
   }
@@ -229,7 +234,7 @@ class MediaItemsStorageService {
   /**
    * Check the storage usage for a specific source
    */
-  getStorageUsage(sourceId: string): number {
+  async getStorageUsage(sourceId: string): Promise<number> {
     const storage = this.getStorageService(sourceId)
     return storage.getStorageUsage()
   }
@@ -237,12 +242,12 @@ class MediaItemsStorageService {
   /**
    * Check the storage limit for a specific source
    */
-  checkStorageLimit(
+  async checkStorageLimit(
     sourceId: string,
     items: StorableMediaItem[],
     newItemData: Omit<StorableMediaItem, 'id' | 'dateAdded'>,
     limitBytes: number = 5 * 1024 * 1024,
-  ): boolean {
+  ): Promise<boolean> {
     const storage = this.getStorageService(sourceId)
     return storage.checkStorageLimit(items, newItemData, limitBytes)
   }
@@ -250,41 +255,33 @@ class MediaItemsStorageService {
   /**
    * Clear all MediaItems for a specific source
    */
-  clearBySource(sourceId: string): void {
+  async clearBySource(sourceId: string): Promise<void> {
     const storage = this.getStorageService(sourceId)
-    storage.clearAll()
+    await storage.clearAll()
   }
 
   /**
    * Clear all MediaItems for all sources
    */
-  clearAll(): void {
-    // Find all keys related to media items and delete them
+  async clearAll(): Promise<void> {
+    const allStorage = await chrome.storage.local.get(null)
     const keysToRemove: string[] = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key && key.startsWith('Wizju_media_items_')) {
+    for (const key in allStorage) {
+      if (key.startsWith('Wizju_media_items_')) {
         keysToRemove.push(key)
       }
     }
-
-    keysToRemove.forEach((key) => {
-      try {
-        localStorage.removeItem(key)
-      } catch (error) {
-        console.error(`Failed to remove ${key}:`, error)
-      }
-    })
+    await chrome.storage.local.remove(keysToRemove)
   }
 
   /**
    * Get a list of all source IDs with existing MediaItems
    */
-  getAllSourceIds(): string[] {
+  async getAllSourceIds(): Promise<string[]> {
+    const allStorage = await chrome.storage.local.get(null)
     const sourceIds: string[] = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key && key.startsWith('Wizju_media_items_')) {
+    for (const key in allStorage) {
+      if (key.startsWith('Wizju_media_items_')) {
         const sourceId = key.replace('Wizju_media_items_', '')
         sourceIds.push(sourceId)
       }
@@ -295,17 +292,17 @@ class MediaItemsStorageService {
   /**
    * Get the total number of MediaItems for a specific source
    */
-  getItemCountBySource(sourceId: string): number {
-    const items = this.loadItemsBySource(sourceId)
+  async getItemCountBySource(sourceId: string): Promise<number> {
+    const items = await this.loadItemsBySource(sourceId)
     return items.length
   }
 
   /**
    * Save MediaItems in bulk for a specific source
    */
-  saveItemsBySource(sourceId: string, items: StorableMediaItem[]): void {
+  async saveItemsBySource(sourceId: string, items: StorableMediaItem[]): Promise<void> {
     const storage = this.getStorageService(sourceId)
-    storage.saveItems(items)
+    await storage.saveItems(items)
   }
 }
 

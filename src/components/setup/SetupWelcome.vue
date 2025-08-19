@@ -210,7 +210,7 @@ const handleNext = async (): Promise<void> => {
         isActive: true,
       }
 
-      const addedSources = streamStore.addSourceWithCategories(sourceInput, categories)
+  const addedSources = await streamStore.addSourceWithCategories(sourceInput, categories)
 
       // Retrieve the ID of the newly added StreamSource
       const newSource = addedSources[addedSources.length - 1]
@@ -220,13 +220,13 @@ const handleNext = async (): Promise<void> => {
       const mediaItemsWithSourceId = addSourceIdToMediaItems(mediaItems, sourceId)
 
       try {
-        mediaStore.addMediaItemsBatch(sourceId, mediaItemsWithSourceId)
+  await mediaStore.addMediaItemsBatch(sourceId, mediaItemsWithSourceId)
         console.log(
           `Successfully parsed and saved ${mediaItems.length} media items for source ${sourceId}`,
         )
       } catch (error) {
         // If saving MediaItems fails, remove the added StreamSource
-        streamStore.removeSource(sourceId)
+  await streamStore.removeSource(sourceId)
         console.error('Failed to add media items batch:', error)
         throw error
       }

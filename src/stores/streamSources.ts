@@ -9,9 +9,9 @@ export const useStreamSourcesStore = defineStore('streamSources', () => {
 
   const activeSources = computed(() => sources.value.filter((source) => source.isActive))
 
-  const loadSources = (): void => {
+  const loadSources = async (): Promise<void> => {
     try {
-      const loadedSources = streamSourcesStorage.loadItems()
+      const loadedSources = await streamSourcesStorage.loadItems()
       sources.value = loadedSources
       isFirstTime.value = loadedSources.length === 0
     } catch (error) {
@@ -19,14 +19,13 @@ export const useStreamSourcesStore = defineStore('streamSources', () => {
     }
   }
 
-  const addSource = (sourceData: CreateStreamSource): StreamSource[] => {
+  const addSource = async (sourceData: CreateStreamSource): Promise<StreamSource[]> => {
     try {
-      // Check storage limit before adding
-      if (!streamSourcesStorage.checkStorageLimit(sources.value, sourceData)) {
+      const withinLimit = await streamSourcesStorage.checkStorageLimit(sources.value, sourceData)
+      if (!withinLimit) {
         throw new Error('Storage limit exceeded')
       }
-
-      sources.value = streamSourcesStorage.addItem(sources.value, sourceData)
+      sources.value = await streamSourcesStorage.addItem(sources.value, sourceData)
       isFirstTime.value = false
       return sources.value
     } catch (error) {
@@ -35,10 +34,10 @@ export const useStreamSourcesStore = defineStore('streamSources', () => {
     }
   }
 
-  const addSourceWithCategories = (
+  const addSourceWithCategories = async (
     sourceInput: Omit<CreateStreamSource, 'categories'>,
     categories: string[],
-  ): StreamSource[] => {
+  ): Promise<StreamSource[]> => {
     const sourceData: CreateStreamSource = {
       ...sourceInput,
       categories,
@@ -46,11 +45,11 @@ export const useStreamSourcesStore = defineStore('streamSources', () => {
     return addSource(sourceData)
   }
 
-  const updateSourceCategories = (id: string, categories: string[]): void => {
+  const updateSourceCategories = async (id: string, categories: string[]): Promise<void> => {
     try {
       const source = streamSourcesStorage.getItemById(sources.value, id)
       if (source) {
-        sources.value = streamSourcesStorage.updateItem(sources.value, id, {
+        sources.value = await streamSourcesStorage.updateItem(sources.value, id, {
           categories,
         })
       }
@@ -60,10 +59,9 @@ export const useStreamSourcesStore = defineStore('streamSources', () => {
     }
   }
 
-  const removeSource = (id: string): void => {
+  const removeSource = async (id: string): Promise<void> => {
     try {
-      sources.value = streamSourcesStorage.removeItem(sources.value, id)
-
+      sources.value = await streamSourcesStorage.removeItem(sources.value, id)
       if (sources.value.length === 0) {
         isFirstTime.value = true
       }
@@ -73,11 +71,11 @@ export const useStreamSourcesStore = defineStore('streamSources', () => {
     }
   }
 
-  const toggleSource = (id: string): void => {
+  const toggleSource = async (id: string): Promise<void> => {
     try {
       const source = streamSourcesStorage.getItemById(sources.value, id)
       if (source) {
-        sources.value = streamSourcesStorage.updateItem(sources.value, id, {
+        sources.value = await streamSourcesStorage.updateItem(sources.value, id, {
           isActive: !source.isActive,
         })
       }
@@ -91,13 +89,13 @@ export const useStreamSourcesStore = defineStore('streamSources', () => {
     isFirstTime.value = value
   }
 
-  const getStorageUsage = (): number => {
+  const getStorageUsage = async (): Promise<number> => {
     return streamSourcesStorage.getStorageUsage()
   }
 
-  const clearAllSources = (): void => {
+  const clearAllSources = async (): Promise<void> => {
     try {
-      streamSourcesStorage.clearAll()
+      await streamSourcesStorage.clearAll()
       sources.value = []
       isFirstTime.value = true
     } catch (error) {

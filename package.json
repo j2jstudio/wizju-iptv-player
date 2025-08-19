@@ -22,13 +22,14 @@
     "clsx": "^2.1.1",
     "iptv-playlist-parser": "^0.15.0",
     "lucide-vue-next": "^0.536.0",
-    "tailwind-merge": "^3.3.1",
     "pinia": "^3.0.3",
+    "tailwind-merge": "^3.3.1",
     "vue": "^3.5.18",
     "vue-router": "^4.5.1"
   },
   "devDependencies": {
     "@tsconfig/node22": "^22.0.2",
+    "@types/chrome": "^0.1.4",
     "@types/node": "^22.16.5",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vue/eslint-config-prettier": "^10.2.0",

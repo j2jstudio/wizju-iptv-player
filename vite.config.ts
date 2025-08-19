@@ -3,6 +3,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import vueDevTools from 'vite-plugin-vue-devtools'
+import { resolve } from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -15,4 +16,20 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  build: {
+    rollupOptions: {
+      input: {
+        popup: resolve(__dirname, 'popup.html'),
+        options: resolve(__dirname, 'options.html'),
+      },
+      output: {
+        // Configure output file names to be static for the extension
+        entryFileNames: `assets/[name].js`,
+        chunkFileNames: `assets/[name].js`,
+        assetFileNames: `assets/[name].[ext]`,
+      }
+    },
+    outDir: 'dist'
+  },
+  publicDir: 'public'
 })

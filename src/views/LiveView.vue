@@ -522,7 +522,7 @@ const handleDeleteSource = async (): Promise<void> => {
     recentWatchingService.removeBySourceId(sourceId)
 
     // 3. Delete the StreamSource
-    streamSourcesStore.removeSource(sourceId)
+  await streamSourcesStore.removeSource(sourceId)
 
     console.log(`Successfully deleted source: ${sourceName} and all its items`)
 
@@ -560,11 +560,11 @@ const handleRefreshSource = async (): Promise<void> => {
     // 3. Add the new MediaItems (with sourceId)
     const mediaItemsWithSourceId = addSourceIdToMediaItems(newMediaItems, sourceId)
 
-    mediaItemsStore.addMediaItemsBatch(sourceId, mediaItemsWithSourceId)
+  await mediaItemsStore.addMediaItemsBatch(sourceId, mediaItemsWithSourceId)
 
     // 4. Extract categories from the new MediaItems and update the StreamSource
     const categories = extractCategories(newMediaItems)
-    streamSourcesStore.updateSourceCategories(sourceId, categories)
+  await streamSourcesStore.updateSourceCategories(sourceId, categories)
 
     console.log(
       `Successfully refreshed source: ${source.name} with ${newMediaItems.length} media items`,
