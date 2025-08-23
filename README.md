@@ -28,6 +28,12 @@ Lightweight, modern, browser‑based IPTV player built with Vue 3, Vite, TypeScr
 - 🧪 Strict TypeScript + `vue-tsc` type build step
 - 🧰 ESLint + Prettier configured for consistent code style
 
+## Chrome Web Store
+
+Wizju IPTV Player on Chrome Web Store
+
+[https://chromewebstore.google.com/detail/hdjojoomjdagepdhijbimikcnpnbmfpa?utm_source=item-share-cb](https://chromewebstore.google.com/detail/hdjojoomjdagepdhijbimikcnpnbmfpa?utm_source=item-share-cb)
+
 ## 📸 Preview
 
 
