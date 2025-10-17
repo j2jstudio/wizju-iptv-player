@@ -4,8 +4,7 @@
   "version": "1.0.0",
   "description": "A modern IPTV player built with Vue.js.",
   "permissions": [
-    "storage",
-    "activeTab"
+    "storage"
   ],
   "action": {
     "default_icon": {
