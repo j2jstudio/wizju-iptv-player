@@ -13,7 +13,13 @@
     <!-- Media Detail Content -->
     <div class="p-6 pt-24 md:pt-20">
       <div class="w-full lg:w-3/4">
-        <div v-if="!media" class="text-center py-12">
+        <!-- Loading state -->
+        <div v-if="isLoading" class="flex flex-col items-center justify-center py-12 space-y-4">
+          <div class="w-12 h-12 border-4 border-stream-accent border-t-transparent rounded-full animate-spin"></div>
+          <p class="text-stream-text-muted">Loading media details...</p>
+        </div>
+
+        <div v-else-if="!media" class="text-center py-12">
           <h2 class="text-xl font-semibold text-stream-text mb-4">Media not found</h2>
           <Button @click="navigationService.goBack()" variant="outline">
             <ArrowLeft class="w-4 h-4 mr-2" />
@@ -204,6 +210,7 @@ const navigationStore = useNavigationStore()
 const navigationService = useNavigationService()
 
 const media = ref<M3UMediaItem | null>(null)
+const isLoading = ref(false)
 const isPlaying = ref(false)
 const videoPlayer = ref<HTMLVideoElement | null>(null)
 const imageLoadError = ref(false)
@@ -236,45 +243,52 @@ const handleToggleFavorite = async () => {
 
 // Load media from the navigation store
 const loadMedia = async () => {
-  console.log('Loading media from navigation store')
+  isLoading.value = true
+  try {
+    console.log('Loading media from navigation store')
 
-  // // No need to validate the current navigation state
-  // const sourceValidation = navigationStore.validateCurrentSource()
-  // if (!sourceValidation.isValid) {
-  //   console.error('No valid current source:', sourceValidation.error)
-  //   media.value = null
-  //   return
-  // }
+    // // No need to validate the current navigation state
+    // const sourceValidation = navigationStore.validateCurrentSource()
+    // if (!sourceValidation.isValid) {
+    //   console.error('No valid current source:', sourceValidation.error)
+    //   media.value = null
+    //   return
+    // }
 
-  // Validate the current MediaItem
-  const mediaValidation = navigationStore.validateCurrentMediaItem()
-  if (!mediaValidation.isValid) {
-    console.error('No valid current media item:', mediaValidation.error)
-    media.value = null
-    return
-  }
-
-  // Get the current MediaItem directly from the navigation store
-  media.value = navigationStore.currentMediaItem
-  console.log('Media loaded from navigation store:', media.value)
-
-  // Reset image load error state
-  imageLoadError.value = false
-
-  // Initialize favorite status
-  updateFavoriteStatus()
-
-  // After successfully loading the media, add it to the recent watching list
-  if (media.value && navigationStore.currentSourceId) {
-    try {
-      recentWatchingService.addToRecentWatching({
-        mediaItem: media.value,
-        sourceId: navigationStore.currentSourceId,
-      })
-      console.log('Added to recent watching:', media.value.title)
-    } catch (error) {
-      console.error('Failed to add to recent watching:', error)
+    // Validate the current MediaItem
+    const mediaValidation = navigationStore.validateCurrentMediaItem()
+    if (!mediaValidation.isValid) {
+      console.error('No valid current media item:', mediaValidation.error)
+      media.value = null
+      return
     }
+
+    // Get the current MediaItem directly from the navigation store
+    media.value = navigationStore.currentMediaItem
+    console.log('Media loaded from navigation store:', media.value)
+
+    // Reset image load error state
+    imageLoadError.value = false
+
+    // Initialize favorite status
+    await updateFavoriteStatus()
+
+    // After successfully loading the media, add it to the recent watching list
+    if (media.value && navigationStore.currentSourceId) {
+      try {
+        recentWatchingService.addToRecentWatching({
+          mediaItem: media.value,
+          sourceId: navigationStore.currentSourceId,
+        })
+        console.log('Added to recent watching:', media.value.title)
+      } catch (error) {
+        console.error('Failed to add to recent watching:', error)
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load media:', error)
+  } finally {
+    isLoading.value = false
   }
 }
 

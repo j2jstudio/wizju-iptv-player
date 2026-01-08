@@ -76,6 +76,11 @@
       </p>
     </div>
 
+    <div v-else-if="isLoading" class="flex flex-col items-center justify-center py-12 space-y-4">
+      <div class="w-12 h-12 border-4 border-stream-accent border-t-transparent rounded-full animate-spin"></div>
+      <p class="text-stream-text-muted">Loading channels...</p>
+    </div>
+
     <div v-else-if="!hasCurrentSource" class="text-center py-12">
       <p class="text-stream-text-muted mb-4">
         Please select a source from the sidebar to view channels.
@@ -298,6 +303,7 @@ const navigationService = useNavigationService()
 const { getColumnsCount } = useResponsiveGrid()
 const activeCategory = ref('all')
 const searchQuery = ref('')
+const isLoading = ref(false)
 
 // Delete confirmation state
 const showDeleteConfirm = ref(false)
@@ -324,7 +330,7 @@ const hasConfiguredSources = computed(() => streamSourcesStore.sources.length > 
 const hasCurrentSource = computed(() => !!navigationStore.currentSource)
 
 // Initialize the view
-const initializeView = () => {
+const initializeView = async () => {
   // Validate the current source
   const validation = navigationStore.validateCurrentSource()
   if (!validation.isValid && navigationStore.currentSourceId) {
@@ -635,8 +641,15 @@ const cancelDelete = (): void => {
   showDeleteConfirm.value = false
 }
 
-onMounted(() => {
-  initializeView()
+onMounted(async () => {
+  isLoading.value = true
+  try {
+    await initializeView()
+  } catch (error) {
+    console.error('Failed to initialize view:', error)
+  } finally {
+    isLoading.value = false
+  }
 
   // Update container height on mount
   updateContainerHeight()

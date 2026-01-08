@@ -80,7 +80,14 @@
     <!-- Storage Settings -->
     <div class="bg-stream-surface rounded-lg p-6 mb-6 border border-stream-border">
       <h2 class="text-xl font-semibold mb-4 text-stream-text">Storage</h2>
-      <div class="space-y-4">
+      
+      <!-- Storage Statistics -->
+      <div class="mb-6">
+        <h3 class="text-base font-medium text-stream-text mb-3">Storage Information</h3>
+        <StorageStats :show-clear-button="false" />
+      </div>
+      
+      <div class="space-y-4 pt-4 border-t border-stream-border">
         <div>
           <p class="font-medium text-stream-text mb-2">Clear Cache</p>
           <p class="text-sm text-stream-text/60 mb-3">
@@ -173,16 +180,16 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { Plus, PlayCircle, Trash2, AlertCircle } from 'lucide-vue-next'
 import ThemeToggle from '@/components/ui/ThemeToggle.vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import SetupWelcome from '@/components/setup/SetupWelcome.vue'
+import StorageStats from '@/components/ui/StorageStats.vue'
 import { useStreamSourcesStore } from '@/stores/streamSources'
 import { favoritesService } from '@/services/favoritesService'
 import { recentWatchingService } from '@/services/recentWatchingService'
+import { closeDB } from '@/services/indexedDb/indexedDbService'
 
-const router = useRouter()
 const streamStore = useStreamSourcesStore()
 
 const showAddSourceModal = ref(false)
@@ -216,11 +223,16 @@ const removeSource = (sourceId: string) => {
 }
 
 // Clear cache
-const clearCache = () => {
-  // Clear favorites and recent watching
-  favoritesService.clearFavorites()
-  recentWatchingService.clearAll()
-  alert('Cache cleared successfully')
+const clearCache = async () => {
+  try {
+    // Clear favorites and recent watching
+    await favoritesService.clearFavorites()
+    await recentWatchingService.clearAll()
+    alert('Cache cleared successfully')
+  } catch (error) {
+    console.error('Failed to clear cache:', error)
+    alert('Failed to clear cache. Please try again.')
+  }
 }
 
 // Show clear data confirmation dialog
@@ -229,13 +241,31 @@ const showClearDataDialog = () => {
 }
 
 // Confirm and clear all data
-const confirmClearAllData = () => {
-  // Clear all data
-  localStorage.clear()
-  sessionStorage.clear()
-  showClearDataConfirm.value = false
-  alert('All data cleared. The page will now reload.')
-  // Reload the page
-  window.location.reload()
+const confirmClearAllData = async () => {
+  try {
+    // Close the IndexedDB connection
+    await closeDB()
+    
+    // Clear IndexedDB
+    const dbs = await window.indexedDB.databases()
+    for (const db of dbs) {
+      if (db.name) {
+        window.indexedDB.deleteDatabase(db.name)
+      }
+    }
+    
+    // Clear all data
+    localStorage.clear()
+    sessionStorage.clear()
+    
+    showClearDataConfirm.value = false
+    alert('All data cleared. The page will now reload.')
+    
+    // Reload the page
+    window.location.reload()
+  } catch (error) {
+    console.error('Failed to clear all data:', error)
+    alert('Failed to clear all data. Please try again.')
+  }
 }
 </script>
