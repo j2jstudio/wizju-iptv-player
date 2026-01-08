@@ -8,6 +8,45 @@
         </p>
       </div>
       <div v-if="currentSource" class="flex items-center space-x-2">
+        <!-- Search input -->
+        <div class="relative">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search channels..."
+            class="pl-9 pr-8 py-2 text-sm bg-stream-surface border border-stream-border rounded-md text-stream-text placeholder-stream-text-muted focus:outline-none focus:ring-2 focus:ring-stream-accent focus:border-transparent w-64"
+          />
+          <svg
+            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-stream-text-muted"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            ></path>
+          </svg>
+          <!-- Clear button -->
+          <button
+            v-if="searchQuery"
+            @click="searchQuery = ''"
+            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-stream-text-muted hover:text-stream-text transition-colors"
+            title="Clear search"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
+        </div>
+
         <button
           @click="handleRefreshSource"
           :disabled="isRefreshing"
@@ -141,7 +180,16 @@
 
       <!-- Channel Grid -->
       <div v-if="filteredChannels.length === 0" class="text-center py-12">
-        <p class="text-stream-text-muted">No channels available in this category.</p>
+        <p class="text-stream-text-muted">
+          {{ searchQuery ? 'No channels found matching "' + searchQuery + '"' : 'No channels available in this category.' }}
+        </p>
+        <button
+          v-if="searchQuery"
+          @click="searchQuery = ''"
+          class="mt-4 px-4 py-2 text-sm font-medium text-stream-accent hover:text-stream-accent-hover underline"
+        >
+          Clear search
+        </button>
       </div>
 
       <!-- Virtual scroll grid -->
@@ -249,6 +297,7 @@ const mediaItemsStore = useMediaItemsStore()
 const navigationService = useNavigationService()
 const { getColumnsCount } = useResponsiveGrid()
 const activeCategory = ref('all')
+const searchQuery = ref('')
 
 // Delete confirmation state
 const showDeleteConfirm = ref(false)
@@ -334,22 +383,27 @@ const categories = computed(() => {
 })
 
 const filteredChannels = computed(() => {
-  if (activeCategory.value === 'all') {
-    return channels.value
+  let result = channels.value
+
+  // Filter by category
+  if (activeCategory.value !== 'all') {
+    result = result.filter((channel) => {
+      if (!channel.category || !channel.category.trim()) {
+        return false
+      }
+      return channel.category.toLocaleLowerCase().includes(activeCategory.value)
+    })
   }
 
-  return channels.value.filter((channel) => {
-    if (!channel.category || !channel.category.trim()) {
-      return false
-    }
-    // Check if the category string includes the active category
-    return channel.category.toLocaleLowerCase().includes(activeCategory.value)
-    // const channelCategories = channel.category.split(';')
-    //   .map(cat => cat.trim().toLowerCase())
-    //   .filter(cat => cat.length > 0)
+  // Filter by search query
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase().trim()
+    result = result.filter((channel) => {
+      return channel.title?.toLowerCase().includes(query)
+    })
+  }
 
-    // return channelCategories.includes(activeCategory.value)
-  })
+  return result
 })
 
 // Virtual scroll settings
