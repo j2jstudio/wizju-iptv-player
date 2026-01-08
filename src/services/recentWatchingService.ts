@@ -1,43 +1,41 @@
 import type { M3UMediaItem } from '@/types/stream'
-import { LOCALSTORAGE_KEYS } from '@/constants/storage'
+import type { RecentWatchingItem } from '@/types/indexeddb'
+import { StorageServiceV2 } from './indexedDb/storageServiceV2'
+import { STORE_NAMES } from '@/constants/storage'
+import type { MediaSourceType } from '@/types/stream'
 
 /**
  * Recent Watching Service
  * Handles the management of recently watched media items
  */
 
-export interface RecentWatchingItem {
-  readonly id: string
-  readonly mediaItem: M3UMediaItem
-  readonly sourceId: string
-  readonly watchedAt: string
-  readonly lastPosition?: number // Playback position (in seconds)
-}
-
-export interface CreateRecentWatchingItem {
+/**
+ * Input type for creating a recent watching item
+ */
+export interface AddRecentWatchingInput {
   readonly mediaItem: M3UMediaItem
   readonly sourceId: string
   readonly lastPosition?: number
 }
 
+type RecentWatchingCreateData = Omit<RecentWatchingItem, 'id' | 'dateAdded'>
+
 class RecentWatchingService {
-  private readonly storageKey = LOCALSTORAGE_KEYS.RECENT_WATCHING
+  private readonly storageService: StorageServiceV2<RecentWatchingItem, RecentWatchingCreateData>
   private readonly maxItems = 20 // Maximum of 20 recently watched items
 
+  constructor() {
+    this.storageService = new StorageServiceV2(STORE_NAMES.RECENT_WATCHING)
+  }
+
   /**
-   * Load the recent watching list from localStorage
+   * Load the recent watching list from IndexedDB
    */
-  loadRecentWatching(): RecentWatchingItem[] {
+  async loadRecentWatching(): Promise<RecentWatchingItem[]> {
     try {
-      const stored = localStorage.getItem(this.storageKey)
-      if (stored) {
-        const items = JSON.parse(stored) as RecentWatchingItem[]
-        // Sort by watch time in descending order (newest first)
-        return items.sort(
-          (a, b) => new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime(),
-        )
-      }
-      return []
+      const items = await this.storageService.loadItems()
+      // Sort by watch time in descending order (newest first)
+      return items.sort((a, b) => new Date(b.watchedAt).getTime() - new Date(a.watchedAt).getTime())
     } catch (error) {
       console.error('Failed to load recent watching items:', error)
       return []
@@ -45,121 +43,120 @@ class RecentWatchingService {
   }
 
   /**
-   * Save the recent watching list to localStorage
-   */
-  private saveRecentWatching(items: RecentWatchingItem[]): void {
-    try {
-      localStorage.setItem(this.storageKey, JSON.stringify(items))
-    } catch (error) {
-      console.error('Failed to save recent watching items:', error)
-      throw error
-    }
-  }
-
-  /**
    * Add a media item to the recent watching list
    * If the media item already exists, update its watch time and position
    */
-  addToRecentWatching(data: CreateRecentWatchingItem): RecentWatchingItem[] {
-    const items = this.loadRecentWatching()
+  async addToRecentWatching(data: AddRecentWatchingInput): Promise<RecentWatchingItem[]> {
+    const items = await this.loadRecentWatching()
 
     // Check if the same media item already exists (based on mediaItem.id and sourceId)
-    const existingIndex = items.findIndex(
-      (item) => item.mediaItem.id === data.mediaItem.id && item.sourceId === data.sourceId,
+    const existingItem = items.find(
+      (item) => item.itemId === data.mediaItem.id && item.sourceId === data.sourceId,
     )
 
-    const newItem: RecentWatchingItem = {
-      id: existingIndex >= 0 ? items[existingIndex].id : crypto.randomUUID(),
-      mediaItem: data.mediaItem,
-      sourceId: data.sourceId,
-      watchedAt: new Date().toISOString(),
-      lastPosition: data.lastPosition,
-    }
-
-    let updatedItems: RecentWatchingItem[]
-
-    if (existingIndex >= 0) {
-      // If the item already exists, update it and move it to the front
-      updatedItems = [newItem, ...items.filter((_, index) => index !== existingIndex)]
+    if (existingItem) {
+      // If the item already exists, update it
+      await this.storageService.updateItem(existingItem.id, {
+        dateAdded: existingItem.dateAdded, // Keep original dateAdded
+        watchedAt: new Date().toISOString(),
+        lastPosition: data.lastPosition,
+      })
     } else {
-      // If it's a new item, add it to the front
-      updatedItems = [newItem, ...items]
+      // If it's a new item, add it
+      const newItemData: RecentWatchingCreateData = {
+        itemId: data.mediaItem.id,
+        sourceId: data.sourceId,
+        type: 'm3u' as MediaSourceType,
+        watchedAt: new Date().toISOString(),
+        lastPosition: data.lastPosition,
+        title: data.mediaItem.title,
+        description: data.mediaItem.description,
+        thumbnail: data.mediaItem.thumbnail,
+        category: data.mediaItem.category,
+        duration: data.mediaItem.duration,
+        tvgName: data.mediaItem.tvgName,
+        groupTitle: data.mediaItem.groupTitle,
+      }
+
+      await this.storageService.addItem(newItemData)
+
+      // Check if we exceeded the limit
+      const updatedItems = await this.loadRecentWatching()
+      if (updatedItems.length > this.maxItems) {
+        // Remove the oldest item
+        const oldestItem = updatedItems[updatedItems.length - 1]
+        await this.storageService.removeItem(oldestItem.id)
+      }
     }
 
-    // Limit the list length
-    if (updatedItems.length > this.maxItems) {
-      updatedItems = updatedItems.slice(0, this.maxItems)
-    }
-
-    this.saveRecentWatching(updatedItems)
-    return updatedItems
+    return await this.loadRecentWatching()
   }
 
   /**
    * Remove a specific item from the recent watching list
    */
-  removeFromRecentWatching(itemId: string): RecentWatchingItem[] {
-    const items = this.loadRecentWatching()
-    const updatedItems = items.filter((item) => item.id !== itemId)
-    this.saveRecentWatching(updatedItems)
-    return updatedItems
+  async removeFromRecentWatching(itemId: string): Promise<RecentWatchingItem[]> {
+    await this.storageService.removeItem(itemId)
+    return await this.loadRecentWatching()
   }
 
   /**
    * Remove all recent watching items related to a specific sourceId
    * Used when deleting a StreamSource
    */
-  removeBySourceId(sourceId: string): RecentWatchingItem[] {
-    const items = this.loadRecentWatching()
-    const updatedItems = items.filter((item) => item.sourceId !== sourceId)
-    this.saveRecentWatching(updatedItems)
-    return updatedItems
+  async removeBySourceId(sourceId: string): Promise<RecentWatchingItem[]> {
+    const items = await this.loadRecentWatching()
+    const itemsToRemove = items.filter((item) => item.sourceId === sourceId)
+
+    await Promise.all(itemsToRemove.map((item) => this.storageService.removeItem(item.id)))
+
+    return await this.loadRecentWatching()
   }
 
   /**
    * Update the playback position of a specific item
    */
-  updatePlayPosition(itemId: string, position: number): RecentWatchingItem[] {
-    const items = this.loadRecentWatching()
-    const updatedItems = items.map((item) =>
-      item.id === itemId
-        ? {
-            ...item,
-            lastPosition: position,
-            watchedAt: new Date().toISOString(),
-          }
-        : item,
-    )
-    this.saveRecentWatching(updatedItems)
-    return updatedItems
+  async updatePlayPosition(itemId: string, position: number): Promise<RecentWatchingItem[]> {
+    const item = await this.storageService.getItemById(itemId)
+    if (item) {
+      await this.storageService.updateItem(itemId, {
+        dateAdded: item.dateAdded, // Keep original dateAdded
+        lastPosition: position,
+        watchedAt: new Date().toISOString(),
+      })
+    }
+    return await this.loadRecentWatching()
   }
 
   /**
    * Find a recent watching item by mediaItem ID and source ID
    */
-  findRecentWatchingItem(mediaItemId: string, sourceId: string): RecentWatchingItem | undefined {
-    const items = this.loadRecentWatching()
-    return items.find((item) => item.mediaItem.id === mediaItemId && item.sourceId === sourceId)
+  async findRecentWatchingItem(
+    mediaItemId: string,
+    sourceId: string,
+  ): Promise<RecentWatchingItem | undefined> {
+    const items = await this.loadRecentWatching()
+    return items.find((item) => item.itemId === mediaItemId && item.sourceId === sourceId)
   }
 
   /**
    * Clear all recent watching records
    */
-  clearAll(): void {
+  async clearAll(): Promise<void> {
     try {
-      localStorage.removeItem(this.storageKey)
+      await this.storageService.clearAll()
     } catch (error) {
       console.error('Failed to clear recent watching items:', error)
     }
   }
 
   /**
-   * Get the storage size of the recent watching list (in bytes)
+   * Get the storage size estimate
    */
-  getStorageUsage(): number {
+  async getStorageUsage(): Promise<number> {
     try {
-      const data = localStorage.getItem(this.storageKey) || ''
-      return new Blob([data]).size
+      const estimate = await navigator.storage.estimate()
+      return estimate.usage || 0
     } catch {
       return 0
     }
@@ -169,30 +166,39 @@ class RecentWatchingService {
    * Convert RecentWatchingItem to MediaItem (for display purposes)
    * Adds additional display information
    */
-  convertToDisplayMediaItems(items: RecentWatchingItem[]): M3UMediaItem[] {
+  async convertToDisplayMediaItems(items: RecentWatchingItem[]): Promise<M3UMediaItem[]> {
     return items.map((item) => ({
-      ...item.mediaItem,
-      // Add watch time information to the description
+      id: item.itemId,
+      title: item.title,
       description: this.formatWatchedInfo(item),
-      // If there is a playback position, show the remaining time
-      timeRemaining: item.lastPosition ? this.formatTimeRemaining(item.lastPosition) : undefined,
+      thumbnail: item.thumbnail,
+      category: item.category,
+      url: '', // Not stored in recent watching
+      type: 'live', // Default type
+      genre: item.category,
+      timeRemaining: item.lastPosition
+        ? this.formatTimeRemaining(item.lastPosition)
+        : item.duration,
+      tvgName: item.tvgName,
+      groupTitle: item.groupTitle,
+      duration: item.duration,
     }))
   }
 
   /**
    * Filter recent watching items by media type
    */
-  getRecentWatchingByType(type: 'live' | 'vod' | 'series'): M3UMediaItem[] {
-    const items = this.loadRecentWatching()
-    const filteredItems = items.filter((item) => item.mediaItem.type === type)
-    return this.convertToDisplayMediaItems(filteredItems)
+  async getRecentWatchingByType(type: MediaSourceType): Promise<M3UMediaItem[]> {
+    const items = await this.loadRecentWatching()
+    const filteredItems = items.filter((item) => item.type === type)
+    return await this.convertToDisplayMediaItems(filteredItems)
   }
 
   /**
-   * Get recently watched channels (only "live" type)
+   * Get recently watched channels (M3U type)
    */
-  getRecentChannels(): M3UMediaItem[] {
-    return this.getRecentWatchingByType('live')
+  async getRecentChannels(): Promise<M3UMediaItem[]> {
+    return await this.getRecentWatchingByType('m3u')
   }
 
   /**
@@ -215,7 +221,7 @@ class RecentWatchingService {
     }
 
     // Combine original description and watch time
-    const originalDesc = item.mediaItem.description || ''
+    const originalDesc = item.description || ''
     return originalDesc ? `${originalDesc} • ${timeAgo}` : timeAgo
   }
 

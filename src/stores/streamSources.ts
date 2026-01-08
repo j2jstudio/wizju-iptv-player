@@ -1,58 +1,62 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { StreamSource, CreateStreamSource } from '@/types/stream'
-import { streamSourcesStorage } from '@/services/storageService'
+import { StreamSourcesStorageV2 } from '@/services/indexedDb/streamSourcesStorageV2'
+
+// Initialize storage service
+const streamSourcesStorage = new StreamSourcesStorageV2()
 
 export const useStreamSourcesStore = defineStore('streamSources', () => {
   const sources = ref<StreamSource[]>([])
   const isFirstTime = ref(true)
+  const isLoading = ref(false)
 
   const activeSources = computed(() => sources.value.filter((source) => source.isActive))
 
-  const loadSources = (): void => {
+  const loadSources = async (): Promise<void> => {
     try {
-      const loadedSources = streamSourcesStorage.loadItems()
+      isLoading.value = true
+      const loadedSources = await streamSourcesStorage.loadItems()
       sources.value = loadedSources
       isFirstTime.value = loadedSources.length === 0
     } catch (error) {
       console.error('Failed to load stream sources:', error)
+    } finally {
+      isLoading.value = false
     }
   }
 
-  const addSource = (sourceData: CreateStreamSource): StreamSource[] => {
+  const addSource = async (sourceData: CreateStreamSource): Promise<StreamSource> => {
     try {
-      // Check storage limit before adding
-      if (!streamSourcesStorage.checkStorageLimit(sources.value, sourceData)) {
-        throw new Error('Storage limit exceeded')
-      }
-
-      sources.value = streamSourcesStorage.addItem(sources.value, sourceData)
+      const newSource = await streamSourcesStorage.addItem(sourceData)
+      sources.value.push(newSource)
       isFirstTime.value = false
-      return sources.value
+      return newSource
     } catch (error) {
       console.error('Failed to add stream source:', error)
       throw error
     }
   }
 
-  const addSourceWithCategories = (
+  const addSourceWithCategories = async (
     sourceInput: Omit<CreateStreamSource, 'categories'>,
     categories: string[],
-  ): StreamSource[] => {
+  ): Promise<StreamSource> => {
     const sourceData: CreateStreamSource = {
       ...sourceInput,
       categories,
     }
-    return addSource(sourceData)
+    return await addSource(sourceData)
   }
 
-  const updateSourceCategories = (id: string, categories: string[]): void => {
+  const updateSourceCategories = async (id: string, categories: string[]): Promise<void> => {
     try {
-      const source = streamSourcesStorage.getItemById(sources.value, id)
-      if (source) {
-        sources.value = streamSourcesStorage.updateItem(sources.value, id, {
-          categories,
-        })
+      const updatedSource = await streamSourcesStorage.updateItem(id, { categories })
+      if (updatedSource) {
+        const index = sources.value.findIndex((s) => s.id === id)
+        if (index !== -1) {
+          sources.value[index] = updatedSource
+        }
       }
     } catch (error) {
       console.error('Failed to update source categories:', error)
@@ -60,9 +64,10 @@ export const useStreamSourcesStore = defineStore('streamSources', () => {
     }
   }
 
-  const removeSource = (id: string): void => {
+  const removeSource = async (id: string): Promise<void> => {
     try {
-      sources.value = streamSourcesStorage.removeItem(sources.value, id)
+      await streamSourcesStorage.removeItem(id)
+      sources.value = sources.value.filter((s) => s.id !== id)
 
       if (sources.value.length === 0) {
         isFirstTime.value = true
@@ -73,13 +78,14 @@ export const useStreamSourcesStore = defineStore('streamSources', () => {
     }
   }
 
-  const toggleSource = (id: string): void => {
+  const toggleSource = async (id: string): Promise<void> => {
     try {
-      const source = streamSourcesStorage.getItemById(sources.value, id)
-      if (source) {
-        sources.value = streamSourcesStorage.updateItem(sources.value, id, {
-          isActive: !source.isActive,
-        })
+      const updatedSource = await streamSourcesStorage.toggleSourceActive(id)
+      if (updatedSource) {
+        const index = sources.value.findIndex((s) => s.id === id)
+        if (index !== -1) {
+          sources.value[index] = updatedSource
+        }
       }
     } catch (error) {
       console.error('Failed to toggle stream source:', error)
@@ -91,13 +97,19 @@ export const useStreamSourcesStore = defineStore('streamSources', () => {
     isFirstTime.value = value
   }
 
-  const getStorageUsage = (): number => {
-    return streamSourcesStorage.getStorageUsage()
+  const getStorageUsage = async (): Promise<number> => {
+    try {
+      const estimate = await navigator.storage.estimate()
+      return estimate.usage || 0
+    } catch (error) {
+      console.error('Failed to get storage usage:', error)
+      return 0
+    }
   }
 
-  const clearAllSources = (): void => {
+  const clearAllSources = async (): Promise<void> => {
     try {
-      streamSourcesStorage.clearAll()
+      await streamSourcesStorage.clearAll()
       sources.value = []
       isFirstTime.value = true
     } catch (error) {
@@ -107,7 +119,7 @@ export const useStreamSourcesStore = defineStore('streamSources', () => {
   }
 
   const getSourceById = (id: string): StreamSource | undefined => {
-    return streamSourcesStorage.getItemById(sources.value, id)
+    return sources.value.find((s) => s.id === id)
   }
 
   // Initialize on store creation
@@ -117,6 +129,8 @@ export const useStreamSourcesStore = defineStore('streamSources', () => {
     sources: computed(() => sources.value),
     activeSources,
     isFirstTime: computed(() => isFirstTime.value),
+    isLoading: computed(() => isLoading.value),
+    loadSources,
     addSource,
     addSourceWithCategories,
     updateSourceCategories,

@@ -210,17 +210,16 @@ const handleNext = async (): Promise<void> => {
         isActive: true,
       }
 
-      const addedSources = streamStore.addSourceWithCategories(sourceInput, categories)
+      const newSource = await streamStore.addSourceWithCategories(sourceInput, categories)
 
       // Retrieve the ID of the newly added StreamSource
-      const newSource = addedSources[addedSources.length - 1]
       const sourceId = newSource.id
 
       // Update MediaItems with the sourceId and save them in batch
       const mediaItemsWithSourceId = addSourceIdToMediaItems(mediaItems, sourceId)
 
       try {
-        mediaStore.addMediaItemsBatch(sourceId, mediaItemsWithSourceId)
+        await mediaStore.addMediaItemsBatch(sourceId, mediaItemsWithSourceId)
         console.log(
           `Successfully parsed and saved ${mediaItems.length} media items for source ${sourceId}`,
         )

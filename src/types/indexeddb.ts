@@ -27,7 +27,7 @@ export interface FavoriteItem {
   readonly sourceId: string // Associated StreamSource ID
   readonly type: MediaSourceType // Media source type
   readonly dateAdded: string
-  
+
   // Essential fields for display (copied from media item)
   readonly title: string
   readonly description?: string
@@ -47,9 +47,10 @@ export interface RecentWatchingItem {
   readonly itemId: string // Reference to the original media item ID
   readonly sourceId: string // Associated StreamSource ID
   readonly type: MediaSourceType // Media source type
+  readonly dateAdded: string // For compatibility with StorableItem
   readonly watchedAt: string
   readonly lastPosition?: number // Playback position in seconds
-  
+
   // Essential fields for display (copied from media item)
   readonly title: string
   readonly description?: string
@@ -231,4 +232,4 @@ export const STORAGE_LIMITS = {
  */
 export type CreateStorableMediaItem = Omit<StorableMediaItem, 'id' | 'dateAdded'>
 export type CreateFavoriteItem = Omit<FavoriteItem, 'id' | 'dateAdded'>
-export type CreateRecentWatchingItem = Omit<RecentWatchingItem, 'id' | 'watchedAt'>
+export type CreateRecentWatchingItem = Omit<RecentWatchingItem, 'id' | 'dateAdded' | 'watchedAt'>

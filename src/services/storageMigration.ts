@@ -380,6 +380,7 @@ export class StorageMigrationService {
             category: oldRecent.mediaItem.category,
             tvgName: oldRecent.mediaItem.tvgName,
             groupTitle: oldRecent.mediaItem.groupTitle,
+            dateAdded: oldRecent.watchedAt, // Use watchedAt as dateAdded for migration
           }
 
           await store.add(newRecent)

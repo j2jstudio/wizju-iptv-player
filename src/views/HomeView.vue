@@ -79,10 +79,10 @@ const resumeWatching = ref<M3UMediaItem[]>([])
 const favorites = ref<M3UMediaItem[]>([])
 
 // Load recent watching data
-const loadRecentWatching = () => {
+const loadRecentWatching = async () => {
   try {
-    const recentItems = recentWatchingService.loadRecentWatching()
-    resumeWatching.value = recentWatchingService.convertToDisplayMediaItems(recentItems)
+    const recentItems = await recentWatchingService.loadRecentWatching()
+    resumeWatching.value = await recentWatchingService.convertToDisplayMediaItems(recentItems)
     console.log('Loaded recent watching items:', resumeWatching.value.length)
   } catch (error) {
     console.error('Failed to load recent watching items:', error)
@@ -91,9 +91,9 @@ const loadRecentWatching = () => {
 }
 
 // Load favorites data
-const loadFavorites = () => {
+const loadFavorites = async () => {
   try {
-    favorites.value = favoritesService.getFavoritesAsMediaItems()
+    favorites.value = await favoritesService.getFavoritesAsMediaItems()
     console.log('Loaded favorites:', favorites.value.length)
   } catch (error) {
     console.error('Failed to load favorites:', error)

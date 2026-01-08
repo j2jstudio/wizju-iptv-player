@@ -213,22 +213,22 @@ let player: ReturnType<typeof videojs> | null = null
 const isFavorite = ref(false)
 
 // Update favorite status
-const updateFavoriteStatus = () => {
+const updateFavoriteStatus = async () => {
   if (!media.value || !navigationStore.currentSourceId) {
     isFavorite.value = false
     return
   }
-  isFavorite.value = favoritesService.isFavorite(media.value.id, navigationStore.currentSourceId)
+  isFavorite.value = await favoritesService.isFavorite(media.value.id, navigationStore.currentSourceId)
 }
 
 // Toggle favorite status
-const handleToggleFavorite = () => {
+const handleToggleFavorite = async () => {
   if (!media.value || !navigationStore.currentSourceId) return
 
-  const success = favoritesService.toggleFavorite(media.value, navigationStore.currentSourceId)
+  const success = await favoritesService.toggleFavorite(media.value, navigationStore.currentSourceId)
   if (success) {
     // Manually update the reactive state
-    updateFavoriteStatus()
+    await updateFavoriteStatus()
     const action = isFavorite.value ? 'added to' : 'removed from'
     console.log(`Media ${action} favorites:`, media.value.title)
   }

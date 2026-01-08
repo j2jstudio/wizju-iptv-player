@@ -71,10 +71,10 @@ export const useNavigationStore = defineStore('navigation', () => {
   /**
    * Find and set the current MediaItem by ID
    */
-  const setCurrentMediaItemById = (itemId: string): boolean => {
+  const setCurrentMediaItemById = async (itemId: string): Promise<boolean> => {
     if (!currentSourceId.value) return false
 
-    const item = mediaItemsStore.getMediaItemById(currentSourceId.value, itemId)
+    const item = await mediaItemsStore.getMediaItemById(currentSourceId.value, itemId)
     if (item) {
       setCurrentMediaItemFromStorable(item)
       return true

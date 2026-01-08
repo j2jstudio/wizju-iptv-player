@@ -1,11 +1,15 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { mediaItemsStorage } from '@/services/storageService'
+import { MediaItemsStorageV2 } from '@/services/indexedDb/mediaItemsStorageV2'
 import type { StorableMediaItem } from '@/types/indexeddb'
+
+// Initialize storage service
+const mediaItemsStorage = new MediaItemsStorageV2()
 
 export const useMediaItemsStore = defineStore('mediaItems', () => {
   // Store all MediaItems, grouped by source ID
   const mediaItemsBySource = ref<Record<string, StorableMediaItem[]>>({})
+  const isLoading = ref(false)
 
   // Computed property: get all MediaItems
   const allMediaItems = computed(() => {
@@ -34,9 +38,10 @@ export const useMediaItemsStore = defineStore('mediaItems', () => {
   /**
    * Load all MediaItems
    */
-  const loadAllMediaItems = (): void => {
+  const loadAllMediaItems = async (): Promise<void> => {
     try {
-      const allItems = mediaItemsStorage.loadAllItems()
+      isLoading.value = true
+      const allItems = await mediaItemsStorage.loadItems()
 
       // Group by source ID
       const itemsBySource: Record<string, StorableMediaItem[]> = {}
@@ -50,15 +55,17 @@ export const useMediaItemsStore = defineStore('mediaItems', () => {
       mediaItemsBySource.value = itemsBySource
     } catch (error) {
       console.error('Failed to load all media items:', error)
+    } finally {
+      isLoading.value = false
     }
   }
 
   /**
    * Load MediaItems for a specific source
    */
-  const loadMediaItemsBySource = (sourceId: string): void => {
+  const loadMediaItemsBySource = async (sourceId: string): Promise<void> => {
     try {
-      const items = mediaItemsStorage.loadItemsBySource(sourceId)
+      const items = await mediaItemsStorage.getItemsBySourceId(sourceId)
       mediaItemsBySource.value[sourceId] = items
     } catch (error) {
       console.error(`Failed to load media items for source ${sourceId}:`, error)
@@ -68,20 +75,19 @@ export const useMediaItemsStore = defineStore('mediaItems', () => {
   /**
    * Add a MediaItem to a specific source
    */
-  const addMediaItem = (
+  const addMediaItem = async (
     sourceId: string,
-    itemData: Omit<StorableMediaItem, 'id' | 'dateAdded'>,
-  ): void => {
+    itemData: Omit<StorableMediaItem, 'id' | 'dateAdded' | 'sourceId'>,
+  ): Promise<StorableMediaItem> => {
     try {
-      const currentItems = mediaItemsBySource.value[sourceId] || []
+      const newItem = await mediaItemsStorage.addItem({ ...itemData, sourceId })
 
-      // Check storage limit before adding
-      if (!mediaItemsStorage.checkStorageLimit(sourceId, currentItems, itemData)) {
-        throw new Error('Storage limit exceeded')
+      if (!mediaItemsBySource.value[sourceId]) {
+        mediaItemsBySource.value[sourceId] = []
       }
+      mediaItemsBySource.value[sourceId].push(newItem)
 
-      const updatedItems = mediaItemsStorage.addItem(sourceId, currentItems, itemData)
-      mediaItemsBySource.value[sourceId] = updatedItems
+      return newItem
     } catch (error) {
       console.error('Failed to add media item:', error)
       throw error
@@ -91,11 +97,15 @@ export const useMediaItemsStore = defineStore('mediaItems', () => {
   /**
    * Remove a MediaItem from a specific source
    */
-  const removeMediaItem = (sourceId: string, itemId: string): void => {
+  const removeMediaItem = async (sourceId: string, itemId: string): Promise<void> => {
     try {
-      const currentItems = mediaItemsBySource.value[sourceId] || []
-      const updatedItems = mediaItemsStorage.removeItem(sourceId, currentItems, itemId)
-      mediaItemsBySource.value[sourceId] = updatedItems
+      await mediaItemsStorage.removeItem(itemId)
+
+      if (mediaItemsBySource.value[sourceId]) {
+        mediaItemsBySource.value[sourceId] = mediaItemsBySource.value[sourceId].filter(
+          (item) => item.id !== itemId,
+        )
+      }
     } catch (error) {
       console.error('Failed to remove media item:', error)
       throw error
@@ -105,15 +115,20 @@ export const useMediaItemsStore = defineStore('mediaItems', () => {
   /**
    * Update a MediaItem in a specific source
    */
-  const updateMediaItem = (
+  const updateMediaItem = async (
     sourceId: string,
     itemId: string,
     updates: Partial<StorableMediaItem>,
-  ): void => {
+  ): Promise<void> => {
     try {
-      const currentItems = mediaItemsBySource.value[sourceId] || []
-      const updatedItems = mediaItemsStorage.updateItem(sourceId, currentItems, itemId, updates)
-      mediaItemsBySource.value[sourceId] = updatedItems
+      const updatedItem = await mediaItemsStorage.updateItem(itemId, updates)
+
+      if (updatedItem && mediaItemsBySource.value[sourceId]) {
+        const index = mediaItemsBySource.value[sourceId].findIndex((item) => item.id === itemId)
+        if (index !== -1) {
+          mediaItemsBySource.value[sourceId][index] = updatedItem
+        }
+      }
     } catch (error) {
       console.error('Failed to update media item:', error)
       throw error
@@ -123,34 +138,55 @@ export const useMediaItemsStore = defineStore('mediaItems', () => {
   /**
    * Get a MediaItem by ID (requires specifying the source ID)
    */
-  const getMediaItemById = (sourceId: string, itemId: string): StorableMediaItem | undefined => {
+  const getMediaItemById = async (
+    sourceId: string,
+    itemId: string,
+  ): Promise<StorableMediaItem | undefined> => {
+    // First try from cache
     const items = mediaItemsBySource.value[sourceId] || []
-    return mediaItemsStorage.getItemById(sourceId, items, itemId)
+    const cachedItem = items.find((item) => item.id === itemId)
+    if (cachedItem) {
+      return cachedItem
+    }
+
+    // Fallback to database
+    return await mediaItemsStorage.getItemById(itemId)
   }
 
   /**
    * Get the storage usage for a specific source
    */
-  const getStorageUsageBySource = (sourceId: string): number => {
-    return mediaItemsStorage.getStorageUsage(sourceId)
+  const getStorageUsageBySource = async (sourceId: string): Promise<number> => {
+    try {
+      const items = await mediaItemsStorage.getItemsBySourceId(sourceId)
+      return new Blob([JSON.stringify(items)]).size
+    } catch (error) {
+      console.error('Failed to get storage usage by source:', error)
+      return 0
+    }
   }
 
   /**
    * Get the total storage usage
    */
-  const getTotalStorageUsage = (): number => {
-    const sourceIds = mediaItemsStorage.getAllSourceIds()
-    return sourceIds.reduce((total, sourceId) => {
-      return total + mediaItemsStorage.getStorageUsage(sourceId)
-    }, 0)
+  const getTotalStorageUsage = async (): Promise<number> => {
+    try {
+      const estimate = await navigator.storage.estimate()
+      return estimate.usage || 0
+    } catch (error) {
+      console.error('Failed to get total storage usage:', error)
+      return 0
+    }
   }
 
   /**
    * Clear all MediaItems for a specific source
    */
-  const clearMediaItemsBySource = (sourceId: string): void => {
+  const clearMediaItemsBySource = async (sourceId: string): Promise<void> => {
     try {
-      mediaItemsStorage.clearBySource(sourceId)
+      const items = await mediaItemsStorage.getItemsBySourceId(sourceId)
+      // Remove all items for this source
+      await Promise.all(items.map((item) => mediaItemsStorage.removeItem(item.id)))
       delete mediaItemsBySource.value[sourceId]
     } catch (error) {
       console.error('Failed to clear media items by source:', error)
@@ -161,9 +197,9 @@ export const useMediaItemsStore = defineStore('mediaItems', () => {
   /**
    * Clear all MediaItems
    */
-  const clearAllMediaItems = (): void => {
+  const clearAllMediaItems = async (): Promise<void> => {
     try {
-      mediaItemsStorage.clearAll()
+      await mediaItemsStorage.clearAll()
       mediaItemsBySource.value = {}
     } catch (error) {
       console.error('Failed to clear all media items:', error)
@@ -193,39 +229,22 @@ export const useMediaItemsStore = defineStore('mediaItems', () => {
   /**
    * Batch add MediaItems to a specific source
    */
-  const addMediaItemsBatch = (
+  const addMediaItemsBatch = async (
     sourceId: string,
-    itemsData: Omit<StorableMediaItem, 'id' | 'dateAdded'>[],
-  ): void => {
+    itemsData: Omit<StorableMediaItem, 'id' | 'dateAdded' | 'sourceId'>[],
+  ): Promise<void> => {
     try {
-      const currentItems = mediaItemsBySource.value[sourceId] || []
+      // Add sourceId to all items
+      const itemsWithSource = itemsData.map((item) => ({ ...item, sourceId }))
 
-      // Batch create new MediaItems
-      const newItems: StorableMediaItem[] = itemsData.map((itemData) => ({
-        ...itemData,
-        id: crypto.randomUUID(),
-        dateAdded: new Date().toISOString(),
-      }))
-
-      // Merge existing and new items
-      const allItems = [...currentItems, ...newItems]
-
-      // Check the total storage limit
-      const testData = JSON.stringify(allItems)
-      const totalSize = new Blob([testData]).size
-      const limitBytes = 5 * 1024 * 1024 // 5MB default limit
-
-      if (totalSize > limitBytes) {
-        throw new Error(
-          `Storage limit exceeded. Total size: ${(totalSize / 1024 / 1024).toFixed(2)}MB, Limit: ${(limitBytes / 1024 / 1024).toFixed(2)}MB`,
-        )
-      }
-
-      // Batch save to storage
-      mediaItemsStorage.saveItemsBySource(sourceId, allItems)
+      // Batch add to database
+      const newItems = await mediaItemsStorage.addItems(itemsWithSource)
 
       // Update local state
-      mediaItemsBySource.value[sourceId] = allItems
+      if (!mediaItemsBySource.value[sourceId]) {
+        mediaItemsBySource.value[sourceId] = []
+      }
+      mediaItemsBySource.value[sourceId].push(...newItems)
 
       console.log(`Successfully batch added ${newItems.length} media items to source ${sourceId}`)
     } catch (error) {
@@ -238,14 +257,14 @@ export const useMediaItemsStore = defineStore('mediaItems', () => {
    * Get a list of all source IDs that have data
    */
   const getAllSourceIds = (): string[] => {
-    return mediaItemsStorage.getAllSourceIds()
+    return Object.keys(mediaItemsBySource.value)
   }
 
   /**
    * Get the number of MediaItems for a specific source
    */
   const getItemCountBySource = (sourceId: string): number => {
-    return mediaItemsStorage.getItemCountBySource(sourceId)
+    return mediaItemsBySource.value[sourceId]?.length || 0
   }
 
   // Load all data on initialization
@@ -258,6 +277,7 @@ export const useMediaItemsStore = defineStore('mediaItems', () => {
     liveItems,
     vodItems,
     seriesItems,
+    isLoading: computed(() => isLoading.value),
 
     // Query methods
     getItemsByCategory,
