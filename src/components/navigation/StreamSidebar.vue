@@ -117,14 +117,20 @@
         <span class="text-sm text-sidebar-foreground/80">Theme</span>
         <ThemeToggle />
       </div>
-      <Button
-        variant="ghost"
-        size="sm"
-        class="w-full justify-start text-sidebar-foreground hover:bg-sidebar-accent"
+      <RouterLink
+        to="/settings"
+        :class="
+          cn(
+            'flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+            route.path === '/settings'
+              ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+              : 'text-sidebar-foreground hover:bg-sidebar-accent',
+          )
+        "
       >
-        <Settings class="w-4 h-4 mr-3" />
-        Settings
-      </Button>
+        <Settings class="w-4 h-4" />
+        <span>Settings</span>
+      </RouterLink>
     </div>
   </div>
 

@@ -38,7 +38,7 @@ const themeStore = useThemeStore()
 const route = useRoute()
 
 // Define routes that need to display the sidebar
-const sidebarRoutes = ['Home', 'Live', 'Films', 'Series']
+const sidebarRoutes = ['Home', 'Live', 'Films', 'Series', 'Settings']
 
 // Calculate whether to show the sidebar
 const showSidebar = computed(() => {
