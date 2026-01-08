@@ -2,7 +2,7 @@ import type { Router } from 'vue-router'
 import type { RouteLocationRaw } from 'vue-router'
 import { useNavigationStore } from '@/stores/navigation'
 import { useStreamSourcesStore } from '@/stores/streamSources'
-import type { MediaItem } from '@/types/stream'
+import type { M3UMediaItem } from '@/types/stream'
 
 /**
  * Unified routing navigation service class
@@ -53,7 +53,7 @@ export class NavigationService {
    * @param mediaItem Media item, automatically set in the navigation store
    * @param sourceId Optional source ID, sets it as the current source if provided
    */
-  navigateToMediaDetail(mediaItem: MediaItem, sourceId?: string): void {
+  navigateToMediaDetail(mediaItem: M3UMediaItem, sourceId?: string): void {
     const navigationStore = useNavigationStore()
 
     // If a source ID is provided, set it as the current source
@@ -71,7 +71,7 @@ export class NavigationService {
    * @param channel Channel information (currently an alias for MediaItem)
    * @param sourceId Optional source ID
    */
-  navigateToChannelDetail(channel: MediaItem, sourceId?: string): void {
+  navigateToChannelDetail(channel: M3UMediaItem, sourceId?: string): void {
     this.navigateToMediaDetail(channel, sourceId)
   }
 

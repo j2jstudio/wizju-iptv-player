@@ -1,4 +1,4 @@
-import type { MediaItem } from '@/types/stream'
+import type { M3UMediaItem } from '@/types/stream'
 
 /**
  * Recent Watching Service
@@ -7,14 +7,14 @@ import type { MediaItem } from '@/types/stream'
 
 export interface RecentWatchingItem {
   readonly id: string
-  readonly mediaItem: MediaItem
+  readonly mediaItem: M3UMediaItem
   readonly sourceId: string
   readonly watchedAt: string
   readonly lastPosition?: number // Playback position (in seconds)
 }
 
 export interface CreateRecentWatchingItem {
-  readonly mediaItem: MediaItem
+  readonly mediaItem: M3UMediaItem
   readonly sourceId: string
   readonly lastPosition?: number
 }
@@ -168,7 +168,7 @@ class RecentWatchingService {
    * Convert RecentWatchingItem to MediaItem (for display purposes)
    * Adds additional display information
    */
-  convertToDisplayMediaItems(items: RecentWatchingItem[]): MediaItem[] {
+  convertToDisplayMediaItems(items: RecentWatchingItem[]): M3UMediaItem[] {
     return items.map((item) => ({
       ...item.mediaItem,
       // Add watch time information to the description
@@ -181,7 +181,7 @@ class RecentWatchingService {
   /**
    * Filter recent watching items by media type
    */
-  getRecentWatchingByType(type: 'live' | 'vod' | 'series'): MediaItem[] {
+  getRecentWatchingByType(type: 'live' | 'vod' | 'series'): M3UMediaItem[] {
     const items = this.loadRecentWatching()
     const filteredItems = items.filter((item) => item.mediaItem.type === type)
     return this.convertToDisplayMediaItems(filteredItems)
@@ -190,7 +190,7 @@ class RecentWatchingService {
   /**
    * Get recently watched channels (only "live" type)
    */
-  getRecentChannels(): MediaItem[] {
+  getRecentChannels(): M3UMediaItem[] {
     return this.getRecentWatchingByType('live')
   }
 

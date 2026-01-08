@@ -1,5 +1,5 @@
 import { parse as parsePlaylist } from 'iptv-playlist-parser'
-import type { StorableMediaItem } from '@/services/storageService'
+import type { StorableMediaItem } from '@/types/indexeddb'
 
 /**
  * Media Parsing Service
@@ -24,21 +24,35 @@ export class MediaParsingService {
         return []
       }
 
+      // Build category to number mapping
+      const categoryMap = new Map<string, number>()
+      let categoryCounter = 0
+      parsed.items.forEach((item: any) => {
+        const category = item.group?.title || 'general'
+        if (!categoryMap.has(category)) {
+          categoryMap.set(category, categoryCounter++)
+        }
+      })
+
       // Convert to MediaItem format (excluding sourceId)
-      const mediaItems: Omit<StorableMediaItem, 'sourceId'>[] = parsed.items.map((item) => ({
-        title: item.name || 'Unknown',
-        description: item.group?.title || '',
-        thumbnail: item.tvg?.logo || '',
-        category: item.group?.title || 'general',
-        url: item.url,
-        type: 'live' as const, // M3U is typically for live channels
-        genre: item.group?.title || '',
-        timeRemaining: '',
-        tvgName: item.tvg?.name || '',
-        groupTitle: item.group?.title || '',
-        dateAdded: new Date().toISOString(),
-        id: crypto.randomUUID(), // Temporary ID
-      }))
+      const mediaItems: Omit<StorableMediaItem, 'sourceId'>[] = parsed.items.map((item) => {
+        const category = item.group?.title || 'general'
+        return {
+          title: item.name || 'Unknown',
+          description: item.group?.title || '',
+          thumbnail: item.tvg?.logo || '',
+          category,
+          category_num: categoryMap.get(category) || 0,
+          url: item.url,
+          type: 'live' as const, // M3U is typically for live channels
+          genre: item.group?.title || '',
+          timeRemaining: '',
+          tvgName: item.tvg?.name || '',
+          groupTitle: item.group?.title || '',
+          dateAdded: new Date().toISOString(),
+          id: crypto.randomUUID(), // Temporary ID
+        }
+      })
 
       return mediaItems
     } catch (error) {
@@ -81,10 +95,10 @@ export class MediaParsingService {
         // Split categories by semicolon to support multiple categories
         const categories = item.category
           .split(';')
-          .map((cat) => cat.trim())
-          .filter((cat) => cat.length > 0)
+          .map((cat: string) => cat.trim())
+          .filter((cat: string) => cat.length > 0)
 
-        categories.forEach((cat) => categoriesSet.add(cat))
+        categories.forEach((cat: string) => categoriesSet.add(cat))
       }
     })
 

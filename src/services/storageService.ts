@@ -1,4 +1,5 @@
-import type { StreamSource, CreateStreamSource, MediaItem } from '@/types/stream'
+import type { StreamSource, CreateStreamSource, M3UMediaItem } from '@/types/stream'
+import type { StorableMediaItem } from '@/types/indexeddb'
 
 export interface StorageItem {
   readonly id: string
@@ -7,14 +8,6 @@ export interface StorageItem {
 
 export interface CreateStorageItem {
   [key: string]: unknown
-}
-
-/**
- * Extend MediaItem to include dateAdded and sourceId for storage compatibility
- */
-export interface StorableMediaItem extends MediaItem {
-  readonly dateAdded: string
-  readonly sourceId: string // Associated StreamSource ID
 }
 
 class StorageService<T extends StorageItem, C extends CreateStorageItem> {

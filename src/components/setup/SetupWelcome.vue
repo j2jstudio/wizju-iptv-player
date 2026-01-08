@@ -144,7 +144,7 @@ import { cn } from '@/utils/cn'
 import Card from '@/components/ui/UiCard.vue'
 import Button from '@/components/ui/UiButton.vue'
 import Input from '@/components/ui/UiInput.vue'
-import type { CreateStreamSourceInput } from '@/types/stream'
+import type { CreateStreamSourceInput, MediaSourceType } from '@/types/stream'
 import { useStreamSourcesStore } from '@/stores/streamSources'
 import { useMediaItemsStore } from '@/stores/mediaItems'
 import {
@@ -170,7 +170,7 @@ const isLoading = ref(false)
 const formData = reactive({
   name: '',
   url: '',
-  type: 'm3u' as 'iptv' | 'm3u',
+  type: 'm3u' as MediaSourceType,
 })
 
 const steps: Step[] = [

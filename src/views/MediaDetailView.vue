@@ -195,7 +195,7 @@ import { useNavigationStore } from '@/stores/navigation'
 import { useNavigationService } from '@/services/navigationService'
 import { recentWatchingService } from '@/services/recentWatchingService'
 import { favoritesService } from '@/services/favoritesService'
-import type { MediaItem } from '@/types/stream'
+import type { M3UMediaItem } from '@/types/stream'
 import videojs from 'video.js'
 import 'video.js/dist/video-js.css'
 import '@videojs/http-streaming'
@@ -203,7 +203,7 @@ import '@videojs/http-streaming'
 const navigationStore = useNavigationStore()
 const navigationService = useNavigationService()
 
-const media = ref<MediaItem | null>(null)
+const media = ref<M3UMediaItem | null>(null)
 const isPlaying = ref(false)
 const videoPlayer = ref<HTMLVideoElement | null>(null)
 const imageLoadError = ref(false)

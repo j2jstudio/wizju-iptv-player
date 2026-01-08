@@ -1,14 +1,21 @@
+/**
+ * Media source type
+ * Supports M3U playlists, Xtream Codes API, and Emby server
+ */
+export type MediaSourceType = 'm3u' | 'xtreamcode' | 'emby'
+
 export interface StreamSource {
   readonly id: string
   readonly name: string
   readonly url: string
-  readonly type: 'iptv' | 'm3u'
+  readonly type: MediaSourceType
+  readonly password?: string
   readonly dateAdded: string
   readonly isActive: boolean
   readonly categories: string[]
 }
 
-export interface MediaItem {
+export interface M3UMediaItem {
   readonly id: string
   readonly title: string
   readonly description?: string
@@ -25,10 +32,10 @@ export interface MediaItem {
   readonly groupTitle?: string
 }
 
-// Channel is an alias for MediaItem, the type is exactly the same
-export type Channel = MediaItem
+// Channel is an alias for M3UMediaItem, the type is exactly the same
+export type Channel = M3UMediaItem
 
-export interface Category {
+export interface M3UCategory {
   readonly id: string
   readonly name: string
   readonly icon: string

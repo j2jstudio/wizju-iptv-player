@@ -365,10 +365,10 @@ const categories = computed(() => {
       // Support multiple categories separated by semicolons
       const categories = ch.category
         .split(';')
-        .map((cat) => cat.trim())
-        .filter((cat) => cat.length > 0)
+        .map((cat: string) => cat.trim())
+        .filter((cat: string) => cat.length > 0)
 
-      categories.forEach((cat) => channelCategories.add(cat))
+      categories.forEach((cat: string) => channelCategories.add(cat))
     }
   })
 

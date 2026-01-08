@@ -27,10 +27,10 @@
 <script setup lang="ts">
 import { cn } from '@/utils/cn'
 import MediaCard from './MediaCard.vue'
-import type { MediaItem } from '@/types/stream'
+import type { M3UMediaItem } from '@/types/stream'
 
 interface Props {
-  items: MediaItem[]
+  items: M3UMediaItem[]
   className?: string
   emptyMessage?: string
 }
@@ -38,6 +38,6 @@ interface Props {
 defineProps<Props>()
 
 defineEmits<{
-  'item-click': [item: MediaItem]
+  'item-click': [item: M3UMediaItem]
 }>()
 </script>

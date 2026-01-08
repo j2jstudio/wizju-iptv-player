@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { mediaItemsStorage, type StorableMediaItem } from '@/services/storageService'
+import { mediaItemsStorage } from '@/services/storageService'
+import type { StorableMediaItem } from '@/types/indexeddb'
 
 export const useMediaItemsStore = defineStore('mediaItems', () => {
   // Store all MediaItems, grouped by source ID

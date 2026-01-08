@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import type { StreamSource, MediaItem } from '@/types/stream'
-import type { StorableMediaItem } from '@/services/storageService'
+import type { StreamSource, M3UMediaItem } from '@/types/stream'
+import type { StorableMediaItem } from '@/types/indexeddb'
 import { useStreamSourcesStore } from './streamSources'
 import { useMediaItemsStore } from './mediaItems'
 
@@ -9,7 +9,7 @@ export const useNavigationStore = defineStore('navigation', () => {
   // Currently selected StreamSource ID
   const currentSourceId = ref<string | null>(null)
   // Currently selected MediaItem
-  const currentMediaItem = ref<MediaItem | null>(null)
+  const currentMediaItem = ref<M3UMediaItem | null>(null)
 
   const streamSourcesStore = useStreamSourcesStore()
   const mediaItemsStore = useMediaItemsStore()
@@ -43,7 +43,7 @@ export const useNavigationStore = defineStore('navigation', () => {
   /**
    * Set the current MediaItem
    */
-  const setCurrentMediaItem = (mediaItem: MediaItem | null): void => {
+  const setCurrentMediaItem = (mediaItem: M3UMediaItem | null): void => {
     currentMediaItem.value = mediaItem
   }
 
@@ -51,7 +51,7 @@ export const useNavigationStore = defineStore('navigation', () => {
    * Create a MediaItem from a StorableMediaItem and set it as the current item
    */
   const setCurrentMediaItemFromStorable = (storableItem: StorableMediaItem): void => {
-    const mediaItem: MediaItem = {
+    const mediaItem: M3UMediaItem = {
       id: storableItem.id,
       title: storableItem.title,
       description: storableItem.description || storableItem.category,

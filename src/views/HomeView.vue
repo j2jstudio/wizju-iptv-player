@@ -66,7 +66,7 @@ import { useStreamSourcesStore } from '@/stores/streamSources'
 import { useNavigationService } from '@/services/navigationService'
 import { recentWatchingService } from '@/services/recentWatchingService'
 import { favoritesService } from '@/services/favoritesService'
-import type { MediaItem } from '@/types/stream'
+import type { M3UMediaItem } from '@/types/stream'
 
 const streamSourcesStore = useStreamSourcesStore()
 const navigationService = useNavigationService()
@@ -75,8 +75,8 @@ const navigationService = useNavigationService()
 const isDev = import.meta.env.DEV
 
 // Recent watching data and favorites data
-const resumeWatching = ref<MediaItem[]>([])
-const favorites = ref<MediaItem[]>([])
+const resumeWatching = ref<M3UMediaItem[]>([])
+const favorites = ref<M3UMediaItem[]>([])
 
 // Load recent watching data
 const loadRecentWatching = () => {
@@ -101,7 +101,7 @@ const loadFavorites = () => {
   }
 }
 
-const handleMediaClick = (media: MediaItem): void => {
+const handleMediaClick = (media: M3UMediaItem): void => {
   console.log('Playing media:', media.title)
 
   // Use navigation service for navigation

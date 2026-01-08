@@ -1,8 +1,8 @@
-import type { MediaItem } from '@/types/stream'
+import type { M3UMediaItem } from '@/types/stream'
 
 export interface FavoriteItem {
   readonly id: string
-  readonly mediaItem: MediaItem
+  readonly mediaItem: M3UMediaItem
   readonly sourceId: string
   readonly dateAdded: string
 }
@@ -40,7 +40,7 @@ class FavoritesService {
   /**
    * Add a media item to favorites
    */
-  addToFavorites(mediaItem: MediaItem, sourceId: string): boolean {
+  addToFavorites(mediaItem: M3UMediaItem, sourceId: string): boolean {
     try {
       // Check if the item is already a favorite
       if (this.isFavorite(mediaItem.id, sourceId)) {
@@ -101,7 +101,7 @@ class FavoritesService {
   /**
    * Toggle the favorite status of a media item
    */
-  toggleFavorite(mediaItem: MediaItem, sourceId: string): boolean {
+  toggleFavorite(mediaItem: M3UMediaItem, sourceId: string): boolean {
     if (this.isFavorite(mediaItem.id, sourceId)) {
       return this.removeFromFavorites(mediaItem.id, sourceId)
     } else {
@@ -138,7 +138,7 @@ class FavoritesService {
   /**
    * Convert favorite items to a displayable array of MediaItems
    */
-  getFavoritesAsMediaItems(): MediaItem[] {
+  getFavoritesAsMediaItems(): M3UMediaItem[] {
     return this.getFavorites().map((fav) => fav.mediaItem)
   }
 }
