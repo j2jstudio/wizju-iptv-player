@@ -9,6 +9,7 @@ import type { M3UMediaItem } from '@/types/stream'
 import type { StorableMediaItem } from '@/types/indexeddb'
 import { StorageServiceV2 } from './storageServiceV2'
 import { getDB } from './indexedDbService'
+import { STORE_NAMES, INDEX_NAMES } from '@/constants/storage'
 
 /**
  * Type for creating a new media item
@@ -23,7 +24,7 @@ export type CreateMediaItem = Omit<StorableMediaItem, 'id' | 'dateAdded'>
  */
 export class MediaItemsStorageV2 extends StorageServiceV2<StorableMediaItem, CreateMediaItem> {
   constructor() {
-    super('m3uMediaItems')
+    super(STORE_NAMES.MEDIA_ITEMS)
   }
 
   /**
@@ -34,7 +35,7 @@ export class MediaItemsStorageV2 extends StorageServiceV2<StorableMediaItem, Cre
    */
   async getItemsBySourceId(sourceId: string): Promise<StorableMediaItem[]> {
     try {
-      return await this.loadItemsByIndex('by-sourceId', sourceId)
+      return await this.loadItemsByIndex(INDEX_NAMES.MEDIA_ITEMS_BY_SOURCE_ID, sourceId)
     } catch (error) {
       console.error('[MediaItemsStorageV2] Failed to get items by source id:', error)
       throw error
@@ -54,7 +55,7 @@ export class MediaItemsStorageV2 extends StorageServiceV2<StorableMediaItem, Cre
   ): Promise<StorableMediaItem[]> {
     try {
       const query = IDBKeyRange.only([sourceId, categoryNum])
-      return await this.loadItemsByIndex('by-sourceId-and-category_num', query)
+      return await this.loadItemsByIndex(INDEX_NAMES.MEDIA_ITEMS_BY_SOURCE_AND_CATEGORY, query)
     } catch (error) {
       console.error('[MediaItemsStorageV2] Failed to get items by source and category:', error)
       throw error
@@ -74,7 +75,7 @@ export class MediaItemsStorageV2 extends StorageServiceV2<StorableMediaItem, Cre
   ): Promise<StorableMediaItem[]> {
     try {
       const query = IDBKeyRange.only([sourceId, type])
-      return await this.loadItemsByIndex('by-sourceId-and-type', query)
+      return await this.loadItemsByIndex(INDEX_NAMES.MEDIA_ITEMS_BY_SOURCE_AND_TYPE, query)
     } catch (error) {
       console.error('[MediaItemsStorageV2] Failed to get items by source and type:', error)
       throw error
@@ -122,7 +123,7 @@ export class MediaItemsStorageV2 extends StorageServiceV2<StorableMediaItem, Cre
     try {
       const query = IDBKeyRange.only([sourceId, categoryNum])
       return await this.getItemsByIndexPaginated(
-        'by-sourceId-and-category_num',
+        INDEX_NAMES.MEDIA_ITEMS_BY_SOURCE_AND_CATEGORY,
         query,
         offset,
         limit,
@@ -153,7 +154,12 @@ export class MediaItemsStorageV2 extends StorageServiceV2<StorableMediaItem, Cre
   ): Promise<StorableMediaItem[]> {
     try {
       const query = IDBKeyRange.only([sourceId, type])
-      return await this.getItemsByIndexPaginated('by-sourceId-and-type', query, offset, limit)
+      return await this.getItemsByIndexPaginated(
+        INDEX_NAMES.MEDIA_ITEMS_BY_SOURCE_AND_TYPE,
+        query,
+        offset,
+        limit,
+      )
     } catch (error) {
       console.error(
         '[MediaItemsStorageV2] Failed to get paginated items by source and type:',

@@ -1,4 +1,5 @@
 import type { M3UMediaItem } from '@/types/stream'
+import { LOCALSTORAGE_KEYS } from '@/constants/storage'
 
 export interface FavoriteItem {
   readonly id: string
@@ -8,7 +9,7 @@ export interface FavoriteItem {
 }
 
 class FavoritesService {
-  private readonly STORAGE_KEY = 'wizju-favorites'
+  private readonly STORAGE_KEY = LOCALSTORAGE_KEYS.FAVORITES
   private readonly MAX_FAVORITES = 20
 
   /**

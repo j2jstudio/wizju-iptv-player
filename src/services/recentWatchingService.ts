@@ -1,4 +1,5 @@
 import type { M3UMediaItem } from '@/types/stream'
+import { LOCALSTORAGE_KEYS } from '@/constants/storage'
 
 /**
  * Recent Watching Service
@@ -20,7 +21,7 @@ export interface CreateRecentWatchingItem {
 }
 
 class RecentWatchingService {
-  private readonly storageKey = 'Wizju_recent_watching'
+  private readonly storageKey = LOCALSTORAGE_KEYS.RECENT_WATCHING
   private readonly maxItems = 20 // Maximum of 20 recently watched items
 
   /**

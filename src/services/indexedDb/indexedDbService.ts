@@ -10,9 +10,9 @@
 
 import { openDB, type IDBPDatabase } from 'idb'
 import type { WizjuDBSchema } from '@/types/indexeddb'
+import { INDEXEDDB_CONFIG, STORE_NAMES, INDEX_NAMES } from '@/constants/storage'
 
-const DB_NAME = 'WizjuIPTVDB'
-const DB_VERSION = 1
+const { DB_NAME, DB_VERSION } = INDEXEDDB_CONFIG
 
 /**
  * Singleton database instance
@@ -52,48 +52,60 @@ export async function initDB(): Promise<IDBPDatabase<WizjuDBSchema>> {
       // Version 1: Initial database setup
       if (oldVersion < 1) {
         // Create streamSources store
-        if (!db.objectStoreNames.contains('streamSources')) {
-          const streamSourcesStore = db.createObjectStore('streamSources', {
+        if (!db.objectStoreNames.contains(STORE_NAMES.STREAM_SOURCES)) {
+          const streamSourcesStore = db.createObjectStore(STORE_NAMES.STREAM_SOURCES, {
             keyPath: 'id',
           })
-          streamSourcesStore.createIndex('by-dateAdded', 'dateAdded')
-          streamSourcesStore.createIndex('by-isActive', 'isActive')
+          streamSourcesStore.createIndex(INDEX_NAMES.STREAM_SOURCES_BY_DATE_ADDED, 'dateAdded')
+          streamSourcesStore.createIndex(INDEX_NAMES.STREAM_SOURCES_BY_IS_ACTIVE, 'isActive')
           console.log('[IndexedDB] Created streamSources store with indexes')
         }
 
-        // Create m3uMediaItems store
-        if (!db.objectStoreNames.contains('m3uMediaItems')) {
-          const mediaItemsStore = db.createObjectStore('m3uMediaItems', {
+        // Create mediaItems store
+        if (!db.objectStoreNames.contains(STORE_NAMES.MEDIA_ITEMS)) {
+          const mediaItemsStore = db.createObjectStore(STORE_NAMES.MEDIA_ITEMS, {
             keyPath: 'id',
           })
-          mediaItemsStore.createIndex('by-sourceId', 'sourceId')
-          mediaItemsStore.createIndex('by-dateAdded', 'dateAdded')
-          mediaItemsStore.createIndex('by-category_num', 'category_num')
-          mediaItemsStore.createIndex('by-type', 'type')
-          mediaItemsStore.createIndex('by-sourceId-and-category_num', ['sourceId', 'category_num'])
-          mediaItemsStore.createIndex('by-sourceId-and-type', ['sourceId', 'type'])
-          console.log('[IndexedDB] Created m3uMediaItems store with indexes')
+          mediaItemsStore.createIndex(INDEX_NAMES.MEDIA_ITEMS_BY_SOURCE_ID, 'sourceId')
+          mediaItemsStore.createIndex(INDEX_NAMES.MEDIA_ITEMS_BY_DATE_ADDED, 'dateAdded')
+          mediaItemsStore.createIndex(INDEX_NAMES.MEDIA_ITEMS_BY_CATEGORY_NUM, 'category_num')
+          mediaItemsStore.createIndex(INDEX_NAMES.MEDIA_ITEMS_BY_TYPE, 'type')
+          mediaItemsStore.createIndex(INDEX_NAMES.MEDIA_ITEMS_BY_SOURCE_AND_CATEGORY, [
+            'sourceId',
+            'category_num',
+          ])
+          mediaItemsStore.createIndex(INDEX_NAMES.MEDIA_ITEMS_BY_SOURCE_AND_TYPE, [
+            'sourceId',
+            'type',
+          ])
+          console.log('[IndexedDB] Created mediaItems store with indexes')
         }
 
         // Create favorites store
-        if (!db.objectStoreNames.contains('favorites')) {
-          const favoritesStore = db.createObjectStore('favorites', {
+        if (!db.objectStoreNames.contains(STORE_NAMES.FAVORITES)) {
+          const favoritesStore = db.createObjectStore(STORE_NAMES.FAVORITES, {
             keyPath: 'id',
           })
-          favoritesStore.createIndex('by-sourceId', 'sourceId')
-          favoritesStore.createIndex('by-dateAdded', 'dateAdded')
-          favoritesStore.createIndex('by-itemId-and-sourceId', ['itemId', 'sourceId'])
+          favoritesStore.createIndex(INDEX_NAMES.FAVORITES_BY_SOURCE_ID, 'sourceId')
+          favoritesStore.createIndex(INDEX_NAMES.FAVORITES_BY_DATE_ADDED, 'dateAdded')
+          favoritesStore.createIndex(INDEX_NAMES.FAVORITES_BY_ITEM_AND_SOURCE, [
+            'itemId',
+            'sourceId',
+          ])
           console.log('[IndexedDB] Created favorites store with indexes')
         }
 
         // Create recentWatching store
-        if (!db.objectStoreNames.contains('recentWatching')) {
-          const recentWatchingStore = db.createObjectStore('recentWatching', {
+        if (!db.objectStoreNames.contains(STORE_NAMES.RECENT_WATCHING)) {
+          const recentWatchingStore = db.createObjectStore(STORE_NAMES.RECENT_WATCHING, {
             keyPath: 'id',
           })
-          recentWatchingStore.createIndex('by-sourceId', 'sourceId')
-          recentWatchingStore.createIndex('by-watchedAt', 'watchedAt')
-          recentWatchingStore.createIndex('by-itemId-and-sourceId', ['itemId', 'sourceId'])
+          recentWatchingStore.createIndex(INDEX_NAMES.RECENT_WATCHING_BY_SOURCE_ID, 'sourceId')
+          recentWatchingStore.createIndex(INDEX_NAMES.RECENT_WATCHING_BY_WATCHED_AT, 'watchedAt')
+          recentWatchingStore.createIndex(INDEX_NAMES.RECENT_WATCHING_BY_ITEM_AND_SOURCE, [
+            'itemId',
+            'sourceId',
+          ])
           console.log('[IndexedDB] Created recentWatching store with indexes')
         }
       }

@@ -7,6 +7,7 @@
 
 import type { StreamSource, CreateStreamSource } from '@/types/stream'
 import { StorageServiceV2 } from './storageServiceV2'
+import { STORE_NAMES, INDEX_NAMES } from '@/constants/storage'
 
 /**
  * StreamSources Storage Service
@@ -15,7 +16,7 @@ import { StorageServiceV2 } from './storageServiceV2'
  */
 export class StreamSourcesStorageV2 extends StorageServiceV2<StreamSource, CreateStreamSource> {
   constructor() {
-    super('streamSources')
+    super(STORE_NAMES.STREAM_SOURCES)
   }
 
   /**
@@ -25,7 +26,10 @@ export class StreamSourcesStorageV2 extends StorageServiceV2<StreamSource, Creat
    */
   async getActiveSources(): Promise<StreamSource[]> {
     try {
-      return await this.loadItemsByIndex('by-isActive', IDBKeyRange.only(true))
+      return await this.loadItemsByIndex(
+        INDEX_NAMES.STREAM_SOURCES_BY_IS_ACTIVE,
+        IDBKeyRange.only(true),
+      )
     } catch (error) {
       console.error('[StreamSourcesStorageV2] Failed to get active sources:', error)
       throw error
@@ -39,7 +43,10 @@ export class StreamSourcesStorageV2 extends StorageServiceV2<StreamSource, Creat
    */
   async getInactiveSources(): Promise<StreamSource[]> {
     try {
-      return await this.loadItemsByIndex('by-isActive', IDBKeyRange.only(false))
+      return await this.loadItemsByIndex(
+        INDEX_NAMES.STREAM_SOURCES_BY_IS_ACTIVE,
+        IDBKeyRange.only(false),
+      )
     } catch (error) {
       console.error('[StreamSourcesStorageV2] Failed to get inactive sources:', error)
       throw error
@@ -53,7 +60,7 @@ export class StreamSourcesStorageV2 extends StorageServiceV2<StreamSource, Creat
    */
   async getSourcesSortedByDate(): Promise<StreamSource[]> {
     try {
-      const sources = await this.loadItemsByIndex('by-dateAdded')
+      const sources = await this.loadItemsByIndex(INDEX_NAMES.STREAM_SOURCES_BY_DATE_ADDED)
       // Sort in descending order (most recent first)
       return sources.sort(
         (a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime(),
@@ -201,7 +208,10 @@ export class StreamSourcesStorageV2 extends StorageServiceV2<StreamSource, Creat
    */
   async countActiveSources(): Promise<number> {
     try {
-      return await this.countItemsByIndex('by-isActive', IDBKeyRange.only(true))
+      return await this.countItemsByIndex(
+        INDEX_NAMES.STREAM_SOURCES_BY_IS_ACTIVE,
+        IDBKeyRange.only(true),
+      )
     } catch (error) {
       console.error('[StreamSourcesStorageV2] Failed to count active sources:', error)
       throw error
