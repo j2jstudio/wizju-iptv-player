@@ -164,7 +164,6 @@
             :container-height="containerHeight"
             :items-per-row="itemsPerRow"
             :gap="16"
-            grid-class="grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
           >
             <template #default="{ item }">
               <div class="w-full h-full flex">
