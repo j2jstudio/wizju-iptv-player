@@ -15,6 +15,16 @@ import { INDEXEDDB_CONFIG, STORE_NAMES, INDEX_NAMES } from '@/constants/storage'
 const { DB_NAME, DB_VERSION } = INDEXEDDB_CONFIG
 
 /**
+ * Required object stores for the database
+ */
+const REQUIRED_STORES = [
+  STORE_NAMES.STREAM_SOURCES,
+  STORE_NAMES.MEDIA_ITEMS,
+  STORE_NAMES.FAVORITES,
+  STORE_NAMES.RECENT_WATCHING,
+] as const
+
+/**
  * Singleton database instance
  */
 let dbInstance: IDBPDatabase<WizjuDBSchema> | null = null
@@ -23,6 +33,65 @@ let dbInstance: IDBPDatabase<WizjuDBSchema> | null = null
  * Database initialization promise for preventing concurrent initialization
  */
 let dbInitPromise: Promise<IDBPDatabase<WizjuDBSchema>> | null = null
+
+/**
+ * Check if an existing database has all required object stores
+ *
+ * @returns Promise that resolves to true if all stores exist, false otherwise
+ */
+async function validateExistingDatabase(): Promise<boolean> {
+  return new Promise((resolve) => {
+    const request = indexedDB.open(DB_NAME)
+
+    request.onsuccess = () => {
+      const db = request.result
+      const storeNames = Array.from(db.objectStoreNames)
+      db.close()
+
+      const hasAllStores = REQUIRED_STORES.every((store) => storeNames.includes(store))
+
+      if (!hasAllStores) {
+        console.warn('[IndexedDB] Database is missing required stores:', {
+          required: REQUIRED_STORES,
+          existing: storeNames,
+        })
+      }
+
+      resolve(hasAllStores)
+    }
+
+    request.onerror = () => {
+      // Database doesn't exist yet, which is fine
+      resolve(true)
+    }
+  })
+}
+
+/**
+ * Delete the database and reset instance
+ */
+async function forceDeleteDatabase(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    console.log('[IndexedDB] Force deleting corrupted database...')
+    const request = indexedDB.deleteDatabase(DB_NAME)
+
+    request.onsuccess = () => {
+      console.log('[IndexedDB] Corrupted database deleted successfully')
+      dbInstance = null
+      dbInitPromise = null
+      resolve()
+    }
+
+    request.onerror = () => {
+      console.error('[IndexedDB] Failed to delete corrupted database')
+      reject(new Error('Failed to delete corrupted database'))
+    }
+
+    request.onblocked = () => {
+      console.warn('[IndexedDB] Delete blocked, waiting...')
+    }
+  })
+}
 
 /**
  * Initialize and open the IndexedDB database
@@ -42,6 +111,12 @@ export async function initDB(): Promise<IDBPDatabase<WizjuDBSchema>> {
   // Return existing initialization promise if in progress
   if (dbInitPromise) {
     return dbInitPromise
+  }
+
+  // Check if existing database has all required stores
+  const isValid = await validateExistingDatabase()
+  if (!isValid) {
+    await forceDeleteDatabase()
   }
 
   // Start new initialization

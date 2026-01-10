@@ -101,7 +101,7 @@ export class StorageMigrationService {
 
       // Check if any localStorage data exists
       const hasStreamSources = !!localStorage.getItem(LOCALSTORAGE_KEYS.STREAM_SOURCES)
-      const hasMediaItems = !!localStorage.getItem(LOCALSTORAGE_KEYS.MEDIA_ITEMS)
+      const hasMediaItems = this.hasMediaItemsInLocalStorage()
       const hasFavorites = !!localStorage.getItem(LOCALSTORAGE_KEYS.FAVORITES)
       const hasRecentWatching = !!localStorage.getItem(LOCALSTORAGE_KEYS.RECENT_WATCHING)
 
@@ -124,6 +124,52 @@ export class StorageMigrationService {
   }
 
   /**
+   * Check if there are any media items in localStorage
+   * Media items are stored with prefix Wizju_media_items_{sourceId}
+   */
+  private hasMediaItemsInLocalStorage(): boolean {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith(LOCALSTORAGE_KEYS.MEDIA_ITEMS_PREFIX)) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /**
+   * Load all media items from localStorage
+   * Media items are stored with prefix Wizju_media_items_{sourceId}
+   */
+  private loadMediaItemsFromLocalStorage(): StorableMediaItem[] {
+    const allItems: StorableMediaItem[] = []
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith(LOCALSTORAGE_KEYS.MEDIA_ITEMS_PREFIX)) {
+        try {
+          const sourceId = key.replace(LOCALSTORAGE_KEYS.MEDIA_ITEMS_PREFIX, '')
+          const itemsRaw = localStorage.getItem(key)
+          if (itemsRaw) {
+            const items = JSON.parse(itemsRaw) as StorableMediaItem[]
+            // Ensure sourceId is set on each item
+            items.forEach((item) => {
+              if (!item.sourceId) {
+                ;(item as { sourceId: string }).sourceId = sourceId
+              }
+            })
+            allItems.push(...items)
+          }
+        } catch (error) {
+          console.error(`[Migration] Failed to parse media items from ${key}:`, error)
+        }
+      }
+    }
+
+    return allItems
+  }
+
+  /**
    * Read all data from localStorage
    *
    * @returns LocalStorage data or null if no data exists
@@ -131,16 +177,25 @@ export class StorageMigrationService {
   private readLocalStorageData(): LocalStorageData | null {
     try {
       const streamSourcesRaw = localStorage.getItem(LOCALSTORAGE_KEYS.STREAM_SOURCES)
-      const mediaItemsRaw = localStorage.getItem(LOCALSTORAGE_KEYS.MEDIA_ITEMS)
       const favoritesRaw = localStorage.getItem(LOCALSTORAGE_KEYS.FAVORITES)
       const recentWatchingRaw = localStorage.getItem(LOCALSTORAGE_KEYS.RECENT_WATCHING)
 
+      // Media items are stored per source, need to aggregate them
+      const mediaItems = this.loadMediaItemsFromLocalStorage()
+
       const data: LocalStorageData = {
         streamSources: streamSourcesRaw ? JSON.parse(streamSourcesRaw) : [],
-        mediaItems: mediaItemsRaw ? JSON.parse(mediaItemsRaw) : [],
+        mediaItems: mediaItems,
         favorites: favoritesRaw ? JSON.parse(favoritesRaw) : [],
         recentWatching: recentWatchingRaw ? JSON.parse(recentWatchingRaw) : [],
       }
+
+      console.log('[Migration] Read localStorage data:', {
+        streamSources: data.streamSources.length,
+        mediaItems: data.mediaItems.length,
+        favorites: data.favorites.length,
+        recentWatching: data.recentWatching.length,
+      })
 
       return data
     } catch (error) {
@@ -150,23 +205,46 @@ export class StorageMigrationService {
   }
 
   /**
+   * Get all media items localStorage keys
+   */
+  private getMediaItemsLocalStorageKeys(): string[] {
+    const keys: string[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith(LOCALSTORAGE_KEYS.MEDIA_ITEMS_PREFIX)) {
+        keys.push(key)
+      }
+    }
+    return keys
+  }
+
+  /**
    * Backup localStorage data before migration
+   *
+   * Note: Instead of copying all data (which may exceed quota), we just record
+   * the keys that contain data. The original data serves as its own backup
+   * until migration is validated and cleanup occurs.
    */
   private backupLocalStorageData(): void {
     try {
-      const backup = {
-        sources: localStorage.getItem(LOCALSTORAGE_KEYS.STREAM_SOURCES),
-        mediaItems: localStorage.getItem(LOCALSTORAGE_KEYS.MEDIA_ITEMS),
-        favorites: localStorage.getItem(LOCALSTORAGE_KEYS.FAVORITES),
-        recentWatching: localStorage.getItem(LOCALSTORAGE_KEYS.RECENT_WATCHING),
+      const mediaItemsKeys = this.getMediaItemsLocalStorageKeys()
+
+      // Only store metadata about what exists, not the actual data
+      // The original localStorage data IS the backup until we clean it up
+      const backupMetadata = {
+        hasStreamSources: !!localStorage.getItem(LOCALSTORAGE_KEYS.STREAM_SOURCES),
+        mediaItemsKeys: mediaItemsKeys,
+        hasFavorites: !!localStorage.getItem(LOCALSTORAGE_KEYS.FAVORITES),
+        hasRecentWatching: !!localStorage.getItem(LOCALSTORAGE_KEYS.RECENT_WATCHING),
         timestamp: new Date().toISOString(),
       }
 
-      localStorage.setItem(MIGRATION_KEYS.BACKUP, JSON.stringify(backup))
-      console.log('[Migration] Backup created successfully')
+      localStorage.setItem(MIGRATION_KEYS.BACKUP, JSON.stringify(backupMetadata))
+      console.log('[Migration] Backup metadata created successfully')
     } catch (error) {
-      console.error('[Migration] Failed to create backup:', error)
-      throw new Error('Failed to create backup before migration')
+      // Even if metadata backup fails, we can proceed since original data is still intact
+      console.warn('[Migration] Failed to create backup metadata:', error)
+      console.log('[Migration] Proceeding without backup metadata - original data is still intact')
     }
   }
 
@@ -485,9 +563,14 @@ export class StorageMigrationService {
 
       // Remove old data
       localStorage.removeItem(LOCALSTORAGE_KEYS.STREAM_SOURCES)
-      localStorage.removeItem(LOCALSTORAGE_KEYS.MEDIA_ITEMS)
       localStorage.removeItem(LOCALSTORAGE_KEYS.FAVORITES)
       localStorage.removeItem(LOCALSTORAGE_KEYS.RECENT_WATCHING)
+
+      // Remove all media items keys
+      const mediaItemsKeys = this.getMediaItemsLocalStorageKeys()
+      mediaItemsKeys.forEach((key) => {
+        localStorage.removeItem(key)
+      })
 
       // Mark migration as complete
       localStorage.setItem(MIGRATION_KEYS.STATUS, 'completed')
@@ -501,35 +584,48 @@ export class StorageMigrationService {
 
   /**
    * Restore from backup (in case of migration failure)
+   *
+   * Note: Since we don't copy data anymore (to avoid quota issues),
+   * "restoring" just means the original data is still there.
+   * This method now just clears any partial IndexedDB data and
+   * removes the migration status so migration can be retried.
    */
   async restoreFromBackup(): Promise<boolean> {
     try {
-      const backupRaw = localStorage.getItem(MIGRATION_KEYS.BACKUP)
-      if (!backupRaw) {
-        console.error('[Migration] No backup found to restore')
-        return false
+      console.log('[Migration] Rolling back - original localStorage data is still intact')
+
+      // Clear any partial data that was migrated to IndexedDB
+      try {
+        const db = await getDB()
+        const tx = db.transaction(
+          [
+            STORE_NAMES.STREAM_SOURCES,
+            STORE_NAMES.MEDIA_ITEMS,
+            STORE_NAMES.FAVORITES,
+            STORE_NAMES.RECENT_WATCHING,
+          ],
+          'readwrite',
+        )
+        await Promise.all([
+          tx.objectStore(STORE_NAMES.STREAM_SOURCES).clear(),
+          tx.objectStore(STORE_NAMES.MEDIA_ITEMS).clear(),
+          tx.objectStore(STORE_NAMES.FAVORITES).clear(),
+          tx.objectStore(STORE_NAMES.RECENT_WATCHING).clear(),
+        ])
+        await tx.done
+        console.log('[Migration] Cleared partial IndexedDB data')
+      } catch (dbError) {
+        console.warn('[Migration] Failed to clear IndexedDB data:', dbError)
       }
 
-      const backup = JSON.parse(backupRaw)
+      // Remove migration status so it can be retried
+      localStorage.removeItem(MIGRATION_KEYS.STATUS)
+      localStorage.removeItem(MIGRATION_KEYS.BACKUP)
 
-      // Restore localStorage data
-      if (backup.sources) {
-        localStorage.setItem(LOCALSTORAGE_KEYS.STREAM_SOURCES, backup.sources)
-      }
-      if (backup.mediaItems) {
-        localStorage.setItem(LOCALSTORAGE_KEYS.MEDIA_ITEMS, backup.mediaItems)
-      }
-      if (backup.favorites) {
-        localStorage.setItem(LOCALSTORAGE_KEYS.FAVORITES, backup.favorites)
-      }
-      if (backup.recentWatching) {
-        localStorage.setItem(LOCALSTORAGE_KEYS.RECENT_WATCHING, backup.recentWatching)
-      }
-
-      console.log('[Migration] Backup restored successfully')
+      console.log('[Migration] Rollback completed - original data preserved')
       return true
     } catch (error) {
-      console.error('[Migration] Failed to restore from backup:', error)
+      console.error('[Migration] Failed to rollback:', error)
       return false
     }
   }
@@ -652,7 +748,7 @@ export class StorageMigrationService {
     // Check if old data exists
     const hasOldData =
       !!localStorage.getItem(LOCALSTORAGE_KEYS.STREAM_SOURCES) ||
-      !!localStorage.getItem(LOCALSTORAGE_KEYS.MEDIA_ITEMS) ||
+      this.hasMediaItemsInLocalStorage() ||
       !!localStorage.getItem(LOCALSTORAGE_KEYS.FAVORITES) ||
       !!localStorage.getItem(LOCALSTORAGE_KEYS.RECENT_WATCHING)
 

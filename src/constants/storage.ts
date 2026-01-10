@@ -15,6 +15,9 @@ export const INDEXEDDB_CONFIG = {
   DB_VERSION: 1,
 } as const
 
+// Export shorthand for convenience
+export const { DB_NAME, DB_VERSION } = INDEXEDDB_CONFIG
+
 /**
  * IndexedDB Object Store Names
  */
@@ -62,11 +65,11 @@ export const INDEX_NAMES = {
  */
 export const LOCALSTORAGE_KEYS = {
   /** Legacy stream sources key */
-  STREAM_SOURCES: 'wizju-stream-sources',
-  /** Legacy media items key */
-  MEDIA_ITEMS: 'wizju-media-items',
+  STREAM_SOURCES: 'Wizju_sources',
+  /** Legacy media items key prefix (actual key is Wizju_media_items_{sourceId}) */
+  MEDIA_ITEMS_PREFIX: 'Wizju_media_items_',
   /** Legacy favorites key */
-  FAVORITES: 'wizju-favorites',
+  FAVORITES: 'Wizju_favorites',
   /** Legacy recent watching key */
   RECENT_WATCHING: 'Wizju_recent_watching',
 } as const

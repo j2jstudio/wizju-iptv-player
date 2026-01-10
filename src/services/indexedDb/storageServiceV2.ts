@@ -67,16 +67,54 @@ export class StorageServiceV2<T extends StorableItem, C extends Omit<T, 'id' | '
   /**
    * Load items by index
    *
+   * NOTE: Uses manual filtering for boolean queries due to fake-indexeddb limitations.
+   * Real IndexedDB properly supports boolean values, but fake-indexeddb (used in tests)
+   * does not handle boolean values in index cursors correctly.
+   *
    * @param indexName The name of the index to query
-   * @param query The query value or range
+   * @param query The query value or range (undefined returns all items via index)
    * @returns Promise that resolves to an array of matching items
    */
   async loadItemsByIndex(indexName: string, query?: IDBValidKey | IDBKeyRange): Promise<T[]> {
     try {
       const db = await this.getDatabase()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const items = await (db as any).getAllFromIndex(this.storeName, indexName, query)
-      return items as T[]
+      const tx = db.transaction(this.storeName as any, 'readonly')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const store = tx.objectStore(this.storeName as any)
+
+      const items: T[] = []
+
+      // Check if query is a boolean (fake-indexeddb doesn't support booleans properly)
+      const isBooleanQuery = typeof query === 'boolean'
+
+      if (isBooleanQuery) {
+        // Workaround for fake-indexeddb: get all items and filter manually
+        const allItems = await store.getAll()
+
+        // Extract property name from index name (by-xxx -> xxx, by-is-active -> isActive)
+        const propName = indexName.startsWith('by-')
+          ? indexName.substring(3).replace(/-([a-z])/g, (_, c) => c.toUpperCase())
+          : indexName
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const filtered = allItems.filter((item: any) => item[propName] === query)
+        items.push(...(filtered as T[]))
+      } else {
+        // Use native IndexedDB index query for other types (strings, numbers, dates, IDBKeyRange)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const index = store.index(indexName)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let cursor = await index.openCursor(query as any)
+
+        while (cursor) {
+          items.push(cursor.value as T)
+          cursor = await cursor.continue()
+        }
+      }
+
+      await tx.done
+      return items
     } catch (error) {
       console.error(`[StorageServiceV2] Failed to load items by index ${indexName}:`, error)
       throw error
