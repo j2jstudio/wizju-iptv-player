@@ -8,6 +8,45 @@
         </p>
       </div>
       <div v-if="currentSource" class="flex items-center space-x-2">
+        <!-- Search input -->
+        <div class="relative">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search channels..."
+            class="pl-9 pr-8 py-2 text-sm bg-stream-surface border border-stream-border rounded-md text-stream-text placeholder-stream-text-muted focus:outline-none focus:ring-2 focus:ring-stream-accent focus:border-transparent w-64"
+          />
+          <svg
+            class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-stream-text-muted"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            ></path>
+          </svg>
+          <!-- Clear button -->
+          <button
+            v-if="searchQuery"
+            @click="searchQuery = ''"
+            class="absolute right-2 top-1/2 transform -translate-y-1/2 text-stream-text-muted hover:text-stream-text transition-colors"
+            title="Clear search"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M6 18L18 6M6 6l12 12"
+              ></path>
+            </svg>
+          </button>
+        </div>
+
         <button
           @click="handleRefreshSource"
           :disabled="isRefreshing"
@@ -35,6 +74,11 @@
       <p class="text-sm text-stream-text-muted">
         Go to Settings to configure your streaming sources.
       </p>
+    </div>
+
+    <div v-else-if="isLoading" class="flex flex-col items-center justify-center py-12 space-y-4">
+      <div class="w-12 h-12 border-4 border-stream-accent border-t-transparent rounded-full animate-spin"></div>
+      <p class="text-stream-text-muted">Loading channels...</p>
     </div>
 
     <div v-else-if="!hasCurrentSource" class="text-center py-12">
@@ -141,7 +185,16 @@
 
       <!-- Channel Grid -->
       <div v-if="filteredChannels.length === 0" class="text-center py-12">
-        <p class="text-stream-text-muted">No channels available in this category.</p>
+        <p class="text-stream-text-muted">
+          {{ searchQuery ? 'No channels found matching "' + searchQuery + '"' : 'No channels available in this category.' }}
+        </p>
+        <button
+          v-if="searchQuery"
+          @click="searchQuery = ''"
+          class="mt-4 px-4 py-2 text-sm font-medium text-stream-accent hover:text-stream-accent-hover underline"
+        >
+          Clear search
+        </button>
       </div>
 
       <!-- Virtual scroll grid -->
@@ -164,7 +217,6 @@
             :container-height="containerHeight"
             :items-per-row="itemsPerRow"
             :gap="16"
-            grid-class="grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
           >
             <template #default="{ item }">
               <div class="w-full h-full flex">
@@ -250,6 +302,8 @@ const mediaItemsStore = useMediaItemsStore()
 const navigationService = useNavigationService()
 const { getColumnsCount } = useResponsiveGrid()
 const activeCategory = ref('all')
+const searchQuery = ref('')
+const isLoading = ref(false)
 
 // Delete confirmation state
 const showDeleteConfirm = ref(false)
@@ -276,7 +330,7 @@ const hasConfiguredSources = computed(() => streamSourcesStore.sources.length > 
 const hasCurrentSource = computed(() => !!navigationStore.currentSource)
 
 // Initialize the view
-const initializeView = () => {
+const initializeView = async () => {
   // Validate the current source
   const validation = navigationStore.validateCurrentSource()
   if (!validation.isValid && navigationStore.currentSourceId) {
@@ -317,10 +371,10 @@ const categories = computed(() => {
       // Support multiple categories separated by semicolons
       const categories = ch.category
         .split(';')
-        .map((cat) => cat.trim())
-        .filter((cat) => cat.length > 0)
+        .map((cat: string) => cat.trim())
+        .filter((cat: string) => cat.length > 0)
 
-      categories.forEach((cat) => channelCategories.add(cat))
+      categories.forEach((cat: string) => channelCategories.add(cat))
     }
   })
 
@@ -335,22 +389,27 @@ const categories = computed(() => {
 })
 
 const filteredChannels = computed(() => {
-  if (activeCategory.value === 'all') {
-    return channels.value
+  let result = channels.value
+
+  // Filter by category
+  if (activeCategory.value !== 'all') {
+    result = result.filter((channel) => {
+      if (!channel.category || !channel.category.trim()) {
+        return false
+      }
+      return channel.category.toLocaleLowerCase().includes(activeCategory.value)
+    })
   }
 
-  return channels.value.filter((channel) => {
-    if (!channel.category || !channel.category.trim()) {
-      return false
-    }
-    // Check if the category string includes the active category
-    return channel.category.toLocaleLowerCase().includes(activeCategory.value)
-    // const channelCategories = channel.category.split(';')
-    //   .map(cat => cat.trim().toLowerCase())
-    //   .filter(cat => cat.length > 0)
+  // Filter by search query
+  if (searchQuery.value.trim()) {
+    const query = searchQuery.value.toLowerCase().trim()
+    result = result.filter((channel) => {
+      return channel.title?.toLowerCase().includes(query)
+    })
+  }
 
-    // return channelCategories.includes(activeCategory.value)
-  })
+  return result
 })
 
 // Virtual scroll settings
@@ -582,8 +641,15 @@ const cancelDelete = (): void => {
   showDeleteConfirm.value = false
 }
 
-onMounted(() => {
-  initializeView()
+onMounted(async () => {
+  isLoading.value = true
+  try {
+    await initializeView()
+  } catch (error) {
+    console.error('Failed to initialize view:', error)
+  } finally {
+    isLoading.value = false
+  }
 
   // Update container height on mount
   updateContainerHeight()

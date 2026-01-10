@@ -3,6 +3,12 @@
     <!-- Show setup if first time -->
     <SetupWelcome v-if="streamSourcesStore.sources.length === 0" @complete="handleSetupComplete" />
 
+    <!-- Loading state -->
+    <div v-else-if="isLoading" class="flex flex-col items-center justify-center py-12 space-y-4">
+      <div class="w-12 h-12 border-4 border-stream-accent border-t-transparent rounded-full animate-spin"></div>
+      <p class="text-stream-text-muted">Loading your content...</p>
+    </div>
+
     <!-- Show home content if sources configured -->
     <template v-else>
       <!-- Header -->
@@ -66,7 +72,7 @@ import { useStreamSourcesStore } from '@/stores/streamSources'
 import { useNavigationService } from '@/services/navigationService'
 import { recentWatchingService } from '@/services/recentWatchingService'
 import { favoritesService } from '@/services/favoritesService'
-import type { MediaItem } from '@/types/stream'
+import type { M3UMediaItem } from '@/types/stream'
 
 const streamSourcesStore = useStreamSourcesStore()
 const navigationService = useNavigationService()
@@ -74,15 +80,18 @@ const navigationService = useNavigationService()
 // Development environment check
 const isDev = import.meta.env.DEV
 
+// Loading state
+const isLoading = ref(false)
+
 // Recent watching data and favorites data
-const resumeWatching = ref<MediaItem[]>([])
-const favorites = ref<MediaItem[]>([])
+const resumeWatching = ref<M3UMediaItem[]>([])
+const favorites = ref<M3UMediaItem[]>([])
 
 // Load recent watching data
-const loadRecentWatching = () => {
+const loadRecentWatching = async () => {
   try {
-    const recentItems = recentWatchingService.loadRecentWatching()
-    resumeWatching.value = recentWatchingService.convertToDisplayMediaItems(recentItems)
+    const recentItems = await recentWatchingService.loadRecentWatching()
+    resumeWatching.value = await recentWatchingService.convertToDisplayMediaItems(recentItems)
     console.log('Loaded recent watching items:', resumeWatching.value.length)
   } catch (error) {
     console.error('Failed to load recent watching items:', error)
@@ -91,9 +100,9 @@ const loadRecentWatching = () => {
 }
 
 // Load favorites data
-const loadFavorites = () => {
+const loadFavorites = async () => {
   try {
-    favorites.value = favoritesService.getFavoritesAsMediaItems()
+    favorites.value = await favoritesService.getFavoritesAsMediaItems()
     console.log('Loaded favorites:', favorites.value.length)
   } catch (error) {
     console.error('Failed to load favorites:', error)
@@ -101,7 +110,22 @@ const loadFavorites = () => {
   }
 }
 
-const handleMediaClick = (media: MediaItem): void => {
+// Load all data
+const loadAllData = async () => {
+  isLoading.value = true
+  try {
+    await Promise.all([
+      loadRecentWatching(),
+      loadFavorites()
+    ])
+  } catch (error) {
+    console.error('Failed to load data:', error)
+  } finally {
+    isLoading.value = false
+  }
+}
+
+const handleMediaClick = (media: M3UMediaItem): void => {
   console.log('Playing media:', media.title)
 
   // Use navigation service for navigation
@@ -114,13 +138,11 @@ const handleSetupComplete = (): void => {
 
 // Load data when the component is mounted
 onMounted(() => {
-  loadRecentWatching()
-  loadFavorites()
+  loadAllData()
 })
 
 // Refresh data when the component is activated (e.g., returning from another page)
 onActivated(() => {
-  loadRecentWatching()
-  loadFavorites()
+  loadAllData()
 })
 </script>

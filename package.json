@@ -13,13 +13,18 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
-    "format": "prettier --write src/"
+    "format": "prettier --write src/",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@videojs/http-streaming": "^3.17.2",
     "@videojs/themes": "^1.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "idb": "^8.0.3",
     "iptv-playlist-parser": "^0.15.0",
     "lucide-vue-next": "^0.536.0",
     "pinia": "^3.0.3",
@@ -32,12 +37,15 @@
     "@types/chrome": "^0.1.4",
     "@types/node": "^22.16.5",
     "@vitejs/plugin-vue": "^6.0.1",
+    "@vitest/ui": "^4.0.16",
     "@vue/eslint-config-prettier": "^10.2.0",
     "@vue/eslint-config-typescript": "^14.6.0",
     "@vue/tsconfig": "^0.7.0",
     "autoprefixer": "^10.4.21",
     "eslint": "^9.31.0",
     "eslint-plugin-vue": "~10.3.0",
+    "fake-indexeddb": "^6.2.5",
+    "happy-dom": "^20.1.0",
     "jiti": "^2.4.2",
     "npm-run-all2": "^8.0.4",
     "prettier": "3.6.2",
@@ -46,6 +54,7 @@
     "video.js": "^8.23.3",
     "vite": "^7.0.6",
     "vite-plugin-vue-devtools": "^8.0.0",
+    "vitest": "^4.0.16",
     "vue-tsc": "^3.0.4"
   }
 }

@@ -93,10 +93,10 @@ import { cn } from '@/utils/cn'
 import Card from '@/components/ui/UiCard.vue'
 import Button from '@/components/ui/UiButton.vue'
 import { useNavigationService } from '@/services/navigationService'
-import type { MediaItem } from '@/types/stream'
+import type { M3UMediaItem } from '@/types/stream'
 
 interface Props {
-  media: MediaItem
+  media: M3UMediaItem
   className?: string
 }
 

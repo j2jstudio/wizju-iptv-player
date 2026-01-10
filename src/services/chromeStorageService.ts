@@ -1,4 +1,5 @@
-import type { StreamSource, CreateStreamSource, M3UMediaItem } from '@/types/stream'
+/// <reference types="chrome" />
+import type { StreamSource, CreateStreamSource } from '@/types/stream'
 import type { StorableMediaItem } from '@/types/indexeddb'
 
 export interface StorageItem {

@@ -26,18 +26,20 @@
           left: 0,
           right: 0,
           height: `${props.itemHeight}px`,
-          display: 'grid',
+          display: props.itemWidth ? 'flex' : 'grid',
           gap: `${props.gap}px`,
+          ...(props.itemWidth ? { flexWrap: 'wrap' } : { gridTemplateColumns: `repeat(${computedItemsPerRow}, minmax(0, 1fr))` }),
         }"
-        :class="props.gridClass"
       >
         <div
           v-for="(item, itemIndex) in virtualRow.items"
           :key="(item as any)?.id || `${virtualRow.index}-${itemIndex}`"
-          class="w-full"
-          :style="{ height: `${props.itemHeight}px` }"
+          :style="{
+            height: `${props.itemHeight}px`,
+            ...(props.itemWidth ? { width: `${props.itemWidth}px`, flexShrink: 0 } : {}),
+          }"
         >
-          <slot :item="item" :index="virtualRow.index * props.itemsPerRow + itemIndex" />
+          <slot :item="item" :index="virtualRow.index * computedItemsPerRow + itemIndex" />
         </div>
       </div>
     </div>
@@ -58,6 +60,7 @@ interface Props<T = unknown> {
   itemHeight: number
   containerHeight: number
   itemsPerRow?: number
+  itemWidth?: number // Optional: width of each item in pixels
   gap?: number
   gridClass?: string
   overscan?: number
@@ -73,15 +76,28 @@ const props = withDefaults(defineProps<Props>(), {
 
 const containerRef = ref<HTMLElement>()
 const scrollTop = ref(0)
+const containerWidth = ref(0)
 
 // Development environment check
 const isDev = import.meta.env.DEV
+
+// Computed items per row based on itemWidth or use provided itemsPerRow
+const computedItemsPerRow = computed(() => {
+  if (props.itemWidth && containerWidth.value > 0) {
+    // Calculate how many items can fit in the container width
+    const availableWidth = containerWidth.value
+    const itemWidthWithGap = props.itemWidth + props.gap
+    const calculated = Math.floor((availableWidth + props.gap) / itemWidthWithGap)
+    return Math.max(1, calculated) // At least 1 item per row
+  }
+  return props.itemsPerRow
+})
 
 // Calculate row height (including gap)
 const rowHeight = computed(() => props.itemHeight + props.gap)
 
 // Total number of rows
-const totalRows = computed(() => Math.ceil(props.items.length / props.itemsPerRow))
+const totalRows = computed(() => Math.ceil(props.items.length / computedItemsPerRow.value))
 
 // Total height
 const totalHeight = computed(() => totalRows.value * rowHeight.value)
@@ -121,8 +137,8 @@ const virtualRows = computed<VirtualRow[]>(() => {
   for (let i = visibleRange.value.start; i <= Math.min(safeEnd, totalRows.value - 1); i++) {
     if (i < 0 || i >= totalRows.value) continue
 
-    const startIndex = i * props.itemsPerRow
-    const endIndex = Math.min(startIndex + props.itemsPerRow, props.items.length)
+    const startIndex = i * computedItemsPerRow.value
+    const endIndex = Math.min(startIndex + computedItemsPerRow.value, props.items.length)
 
     if (startIndex >= props.items.length) break
 
@@ -156,8 +172,9 @@ const handleScroll = () => {
         virtualRowsCount: virtualRows.value.length,
         totalItems: props.items.length,
         totalRows: totalRows.value,
-        itemsPerRow: props.itemsPerRow,
+        itemsPerRow: computedItemsPerRow.value,
         containerHeight: props.containerHeight,
+        containerWidth: containerWidth.value,
       })
     }
   }
@@ -175,8 +192,16 @@ const debounce = <T extends (...args: never[]) => unknown>(
   }
 }
 
+// Update container width
+const updateContainerWidth = () => {
+  if (containerRef.value) {
+    containerWidth.value = containerRef.value.clientWidth
+  }
+}
+
 // Responsive adjustment
 const updateLayout = () => {
+  updateContainerWidth()
   nextTick(() => {
     handleScroll()
 
@@ -184,9 +209,10 @@ const updateLayout = () => {
     if (isDev) {
       console.debug('Virtual Grid Layout Updated:', {
         containerHeight: props.containerHeight,
-        itemsPerRow: props.itemsPerRow,
+        itemsPerRow: computedItemsPerRow.value,
         totalRows: totalRows.value,
         visibleRange: visibleRange.value,
+        containerWidth: containerWidth.value,
       })
     }
   })
@@ -211,7 +237,8 @@ let resizeObserver: ResizeObserver | null = null
 
 onMounted(() => {
   if (containerRef.value) {
-    // Initialize scroll position
+    // Initialize container width and scroll position
+    updateContainerWidth()
     handleScroll()
 
     // Listen for container size changes (for direct container changes)
@@ -242,15 +269,22 @@ onMounted(() => {
 
 // Watch for changes in key props
 watch(
-  () => [props.containerHeight, props.itemsPerRow, props.itemHeight, props.items.length],
+  () => [
+    props.containerHeight,
+    props.itemsPerRow,
+    props.itemHeight,
+    props.itemWidth,
+    props.items.length,
+  ],
   (
-    [newContainerHeight, newItemsPerRow, newItemHeight, newItemsLength],
-    [oldContainerHeight, oldItemsPerRow, oldItemHeight, oldItemsLength],
+    [newContainerHeight, newItemsPerRow, newItemHeight, newItemWidth, newItemsLength],
+    [oldContainerHeight, oldItemsPerRow, oldItemHeight, oldItemWidth, oldItemsLength],
   ) => {
     const shouldUpdate =
       newContainerHeight !== oldContainerHeight ||
       newItemsPerRow !== oldItemsPerRow ||
       newItemHeight !== oldItemHeight ||
+      newItemWidth !== oldItemWidth ||
       newItemsLength !== oldItemsLength
 
     if (shouldUpdate) {
@@ -263,6 +297,7 @@ watch(
           containerHeight: { old: oldContainerHeight, new: newContainerHeight },
           itemsPerRow: { old: oldItemsPerRow, new: newItemsPerRow },
           itemHeight: { old: oldItemHeight, new: newItemHeight },
+          itemWidth: { old: oldItemWidth, new: newItemWidth },
           itemsLength: { old: oldItemsLength, new: newItemsLength },
         })
       }
@@ -284,7 +319,7 @@ onUnmounted(() => {
 defineExpose({
   scrollToIndex: (index: number) => {
     if (containerRef.value) {
-      const rowIndex = Math.floor(index / props.itemsPerRow)
+      const rowIndex = Math.floor(index / computedItemsPerRow.value)
       const targetScrollTop = rowIndex * rowHeight.value
       containerRef.value.scrollTop = targetScrollTop
     }
@@ -294,6 +329,7 @@ defineExpose({
       containerRef.value.scrollTop = 0
     }
   },
+  getComputedItemsPerRow: () => computedItemsPerRow.value,
 })
 </script>
 

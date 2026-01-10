@@ -144,7 +144,7 @@ import { cn } from '@/utils/cn'
 import Card from '@/components/ui/UiCard.vue'
 import Button from '@/components/ui/UiButton.vue'
 import Input from '@/components/ui/UiInput.vue'
-import type { CreateStreamSourceInput } from '@/types/stream'
+import type { CreateStreamSourceInput, MediaSourceType } from '@/types/stream'
 import { useStreamSourcesStore } from '@/stores/streamSources'
 import { useMediaItemsStore } from '@/stores/mediaItems'
 import {
@@ -170,7 +170,7 @@ const isLoading = ref(false)
 const formData = reactive({
   name: '',
   url: '',
-  type: 'm3u' as 'iptv' | 'm3u',
+  type: 'm3u' as MediaSourceType,
 })
 
 const steps: Step[] = [
@@ -210,17 +210,16 @@ const handleNext = async (): Promise<void> => {
         isActive: true,
       }
 
-  const addedSources = await streamStore.addSourceWithCategories(sourceInput, categories)
+      const newSource = await streamStore.addSourceWithCategories(sourceInput, categories)
 
       // Retrieve the ID of the newly added StreamSource
-      const newSource = addedSources[addedSources.length - 1]
       const sourceId = newSource.id
 
       // Update MediaItems with the sourceId and save them in batch
       const mediaItemsWithSourceId = addSourceIdToMediaItems(mediaItems, sourceId)
 
       try {
-  await mediaStore.addMediaItemsBatch(sourceId, mediaItemsWithSourceId)
+        await mediaStore.addMediaItemsBatch(sourceId, mediaItemsWithSourceId)
         console.log(
           `Successfully parsed and saved ${mediaItems.length} media items for source ${sourceId}`,
         )
