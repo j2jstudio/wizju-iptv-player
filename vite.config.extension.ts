@@ -2,17 +2,14 @@ import { fileURLToPath, URL } from 'node:url'
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import vueDevTools from 'vite-plugin-vue-devtools'
 import { resolve } from 'path'
 
-// Default Vite configuration (Chrome Extension mode)
-// Use vite.config.web.ts for web-only builds
-// Use vite.config.extension.ts for extension-only builds
+// Chrome Extension-specific Vite configuration
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [vue(), vueDevTools()],
+  plugins: [vue()],
   define: {
-    // Default to Chrome extension mode for backward compatibility
+    // Define platform for conditional code
     __PLATFORM__: JSON.stringify('chrome-extension'),
     __IS_CHROME_EXTENSION__: JSON.stringify(true),
   },
@@ -29,13 +26,13 @@ export default defineConfig({
         background: resolve(__dirname, 'src/background.ts'),
       },
       output: {
-        // Configure output file names to be static for the extension
+        // Use static file names for Chrome extension (required for manifest.json)
         entryFileNames: `assets/[name].js`,
         chunkFileNames: `assets/[name].js`,
         assetFileNames: `assets/[name].[ext]`,
       },
     },
-    outDir: 'dist',
+    outDir: 'dist-extension',
   },
   publicDir: 'public',
 })

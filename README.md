@@ -18,7 +18,7 @@ Lightweight, modern, browser‑based IPTV player built with Vue 3, Vite, TypeScr
 
 - 📺 Parse and load remote M3U playlists (live channels) via `iptv-playlist-parser`
 - 🗂 Automatic category extraction & tagging
-- ⭐ Local favorites management (up to 20, persisted in `localStorage`)
+- ⭐ Local favorites management (up to 20, persisted in storage)
 - 🕒 Recently watched list with time‑ago and last play position
 - ▶️ Video playback powered by Video.js + HTTP streaming plugin
 - 🧭 Route guarding & simple navigation service
@@ -27,6 +27,7 @@ Lightweight, modern, browser‑based IPTV player built with Vue 3, Vite, TypeScr
 - 🔍 Hash‑based routing (no server config needed)
 - 🧪 Strict TypeScript + `vue-tsc` type build step
 - 🧰 ESLint + Prettier configured for consistent code style
+- 🌐 **Multi-platform support**: Build as Web app or Chrome Extension
 
 ## Chrome Web Store
 
@@ -90,8 +91,15 @@ Open: http://localhost:5173 (default Vite port – adjust if changed in your env
 Type check + production build:
 
 ```sh
-pnpm build
+pnpm build          # Default build (Chrome Extension)
+pnpm build:web      # Build Web version only
+pnpm build:extension # Build Chrome Extension only
+pnpm build:all      # Build both versions
 ```
+
+Output directories:
+- `dist-web/` - Web version (with hashed filenames for caching)
+- `dist-extension/` - Chrome Extension (with static filenames for manifest.json)
 
 Run linter (auto‑fix):
 
@@ -159,20 +167,62 @@ Currently there are no automated tests. Suggested next steps:
 
 ## 📦 Deployment
 
-Any static host (Netlify, Vercel, GitHub Pages, Cloudflare Pages) can serve the production `dist/` output. Because the router uses hash mode, no server rewrite rules are required.
+### Web Version
 
-Basic flow:
+Any static host (Netlify, Vercel, GitHub Pages, Cloudflare Pages) can serve the production `dist-web/` output. Because the router uses hash mode, no server rewrite rules are required.
 
 ```sh
-pnpm build
-# upload dist/ contents to your static host
+pnpm build:web
+# upload dist-web/ contents to your static host
 ```
+
+### Chrome Extension
+
+1. Build the extension:
+   ```sh
+   pnpm build:extension
+   ```
+2. Open Chrome and navigate to `chrome://extensions/`
+3. Enable "Developer mode" (toggle in top right)
+4. Click "Load unpacked" and select the `dist-extension/` folder
+5. The extension icon will appear in your toolbar
+
+For Chrome Web Store submission, zip the `dist-extension/` folder contents.
 
 ## 🔧 Configuration
 
 Environment variables (if you add them later) can be defined in `env.d.ts` / `.env` files per Vite conventions. For Google Analytics the code references `gtag` globally; inject your tag snippet in `index.html` if desired.
 
 Tailwind customization: edit `tailwind.config.ts` and theme CSS in `src/assets/tailwind-themes/`.
+
+### Multi-Platform Configuration
+
+The project uses different Vite configs for each platform:
+
+| Config File | Platform | Output |
+|-------------|----------|--------|
+| `vite.config.ts` | Default (Extension) | `dist/` |
+| `vite.config.web.ts` | Web App | `dist-web/` |
+| `vite.config.extension.ts` | Chrome Extension | `dist-extension/` |
+
+Build-time constants available in code:
+- `__PLATFORM__`: `'web'` or `'chrome-extension'`
+- `__IS_CHROME_EXTENSION__`: `true` or `false`
+
+Use the unified storage interface for cross-platform compatibility:
+
+```typescript
+import { platform, storage } from '@/services/platform'
+
+// Platform detection
+if (platform.isChromeExtension) {
+  // Chrome Extension specific code
+}
+
+// Unified storage (auto-selects localStorage or chrome.storage.local)
+await storage.set('key', value)
+const data = await storage.get('key')
+```
 
 ## 🧩 Code Style
 
